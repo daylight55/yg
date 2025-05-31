@@ -2,93 +2,101 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
+    paths:
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
   pull_request:
-    branches: [ main ]
+    branches: [main]
+    paths:
+      - '**/*.go'
+      - '**/go.mod'
+      - '**/go.sum'
 
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ '1.21', '1.22', '1.23' ]
+        go-version: ['1.22', '1.23', '1.24']
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ matrix.go-version }}
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Run tests
-      run: go test -v -race -coverprofile=coverage.out ./...
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.out ./...
 
-    - name: Check test coverage
-      run: |
-        total_coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-        echo "Total test coverage: ${total_coverage}%"
-        if (( $(echo "$total_coverage < 60" | bc -l) )); then
-          echo "Test coverage is below 60%"
-          exit 1
-        fi
+      - name: Check test coverage
+        run: |
+          total_coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total test coverage: ${total_coverage}%"
+          if (( $(echo "$total_coverage < 60" | bc -l) )); then
+            echo "Test coverage is below 60%"
+            exit 1
+          fi
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.out
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.out
 
   lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
-      with:
-        version: latest
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
 
   build:
     runs-on: ubuntu-latest
     needs: [test, lint]
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.23'
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.24'
 
-    - name: Build
-      run: go build -v ./...
+      - name: Build
+        run: go build -v ./...
 
-    - name: Build binary
-      run: |
-        GOOS=linux GOARCH=amd64 go build -o yg-linux-amd64
-        GOOS=darwin GOARCH=amd64 go build -o yg-darwin-amd64
-        GOOS=windows GOARCH=amd64 go build -o yg-windows-amd64.exe
+      - name: Build binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o yg-linux-amd64
+          GOOS=darwin GOARCH=amd64 go build -o yg-darwin-amd64
+          GOOS=windows GOARCH=amd64 go build -o yg-windows-amd64.exe
 
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: binaries
-        path: |
-          yg-linux-amd64
-          yg-darwin-amd64
-          yg-windows-amd64.exe
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: |
+            yg-linux-amd64
+            yg-darwin-amd64
+            yg-windows-amd64.exe
