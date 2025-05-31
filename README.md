@@ -15,16 +15,19 @@ YAML template generator - A CLI tool to generate YAML files from templates based
 ## Installation
 
 ### Using go install
+
 ```bash
 go install github.com/daylight55/yg@latest
 ```
 
 ### Using Homebrew (when available)
+
 ```bash
 brew install daylight55/yg/yg
 ```
 
 ### From Source
+
 ```bash
 git clone https://github.com/daylight55/yg.git
 cd yg
@@ -34,11 +37,13 @@ go build -o yg
 ## Usage
 
 ### Interactive Mode
+
 ```bash
 yg
 ```
 
 This will prompt you with questions to:
+
 1. Select application type (deployment, job)
 2. Choose application name (with search)
 3. Select environments (multiple choice)
@@ -47,6 +52,7 @@ This will prompt you with questions to:
 6. Confirm generation
 
 ### CLI Mode
+
 ```bash
 # Generate deployment YAML
 yg --app deployment --name my-app --env dev,staging --cluster dev-cluster-1,staging-cluster-1 --yes
@@ -56,6 +62,7 @@ yg --app job --name batch-job --env production --cluster prod-cluster-1 --yes
 ```
 
 ### CLI Options
+
 - `--app`: Application type (deployment, job)
 - `--name`: Application name
 - `--env`: Environments (comma-separated for multiple)
@@ -65,7 +72,8 @@ yg --app job --name batch-job --env production --cluster prod-cluster-1 --yes
 ## Configuration
 
 ### Directory Structure
-```
+
+```console
 .yg/
 └── _templates/
     ├── .yg-config.yaml    # Question configuration
@@ -74,6 +82,7 @@ yg --app job --name batch-job --env production --cluster prod-cluster-1 --yes
 ```
 
 ### Configuration File (`.yg-config.yaml`)
+
 ```yaml
 questions:
   app:
@@ -118,6 +127,7 @@ questions:
 ```
 
 ### Template Files
+
 Templates use Go template syntax and have metadata headers:
 
 ```yaml
@@ -136,9 +146,11 @@ spec:
 ## Examples
 
 ### Example Output
+
 Running `yg --app deployment --name my-app --env dev --cluster dev-cluster-1 --yes` generates:
 
 **File**: `dev/dev-cluster-1/deployment/my-app-deployment.yaml`
+
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
@@ -176,9 +188,11 @@ spec:
 ## Development
 
 ### Prerequisites
-- Go 1.19 or later
+
+- Go 1.21 or later
 
 ### Setup
+
 ```bash
 git clone https://github.com/daylight55/yg.git
 cd yg
@@ -186,6 +200,7 @@ go mod tidy
 ```
 
 ### Build and Test
+
 ```bash
 # Build
 go build -o yg
@@ -201,7 +216,8 @@ golangci-lint run
 ```
 
 ### Project Structure
-```
+
+```console
 ├── cmd/                    # CLI commands
 ├── internal/
 │   ├── config/            # Configuration management
