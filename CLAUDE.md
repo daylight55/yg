@@ -123,19 +123,26 @@ generated!
 
 ```yaml
 questions:
-  app:
-    prompt: "アプリの種類はなんですか？"
-    choises:
-      - deployment
-      - job
-  appName:
-    prompt: "アプリ名は何ですか？"
-    type:
-      dynamic:
-        dependency_questions: ["app"] # 依存する回答を指定
-      interactive: true
-    choises:
-      app:
+  # 質問の実行順序を明示的に指定
+  order:
+    - app
+    - appName
+    - env
+    - cluster
+  # 質問の定義
+  definitions:
+    app:
+      prompt: "アプリの種類はなんですか？"
+      choices:
+        - deployment
+        - job
+    appName:
+      prompt: "アプリ名は何ですか？"
+      type:
+        dynamic:
+          dependency_questions: ["app"] # 依存する回答を指定
+        interactive: true
+      choices:
         deployment:
           - sample-server-1
           - sample-server-2
@@ -148,63 +155,119 @@ questions:
           - sample-job-3
           - sample-job-4
           - sample-job-5
+    env:
+      prompt: "環境名はなんですか？"
+      multiple: true  # 複数選択可能
+      choices:
+        - dev
+        - staging
+        - production
+    cluster:
+      prompt: "クラスターはどこですか？"
+      multiple: true  # 複数選択可能
+      type:
+        dynamic:
+          dependency_questions: ["env"] # 依存する回答を指定
+      choices:
+        dev:
+          - dev-cluster-1
+          - dev-cluster-2
+          - dev-cluster-3
+        staging:
+          - staging-cluster-1
+          - staging-cluster-2
+          - staging-cluster-3
+        production:
+          - production-cluster-1
+          - production-cluster-2
+          - production-cluster-3
+```
+
+**任意のキーに対応した柔軟なスキーマ例:**
+
+```yaml
+questions:
+  order:
+    - something-1
+    - something-2
+    - target-env
+  definitions:
+    something-1:
+      prompt: "Something1?"
+      choices:
+        - option-a
+        - option-b
+    something-2:
+      prompt: "Something2?"
+      type:
+        dynamic:
+          dependency_questions: ["something-1"]
+        interactive: true
+      choices:
+        option-a:
+          - choice-1
+          - choice-2
+        option-b:
+          - choice-3
+          - choice-4
+    target-env:
+      prompt: "対象環境は？"
+      multiple: true
+      choices:
+        - development
+        - staging
+        - production
+```
+
+**下位互換性:**
+従来の直接指定形式も引き続きサポートされます:
+
+```yaml
+questions:
+  app:
+    prompt: "アプリの種類は？"
+    choices: ["deployment", "job"]
   env:
-    prompt: "環境名はなんですか？"
-    choises:
-      - dev
-      - staging
-      - production
-  cluster:
-    prompt: "クラスターはどこですか？"
-    choises:
-      dependency_questions: ["app", "env"] # 依存する回答を指定
-      app:
-        deployment:
-          env:
-            development:
-              - dev-cluster-1
-              - dev-cluster-2
-              - dev-cluster-3
-            staging:
-              - staging-cluster-1
-              - staging-cluster-2
-              - staging-cluster-3
-            production:
-                - production-cluster-1
-                - production-cluster-2
-            - production-cluster-3
-        job:
-          env:
-            development:
-              - dev-cluster
-            staging:
-              - staging-cluster
-            production:
-              - production-cluster
+    prompt: "環境は？"
+    choices: ["dev", "prod"]
 ```
 
 テンプレートファイル
 
-./.yg/templates/Development.yaml
+./.yg/templates/deployment.yaml
 
 ```yaml
-path: {{questions.env}}/{{questions.cluster}}/deployment
-filename: {{questions.app}}-deploymentjob.yaml
+path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
+filename: {{.Questions.appName}}-deployment.yaml
 ---
 
-appName: {{quessions.appName}}
-env: {{quessions.env}}
-cluster: {{quessions.cluster}}
+appName: {{.Questions.appName}}
+env: {{.Questions.env}}
+cluster: {{.Questions.cluster}}
 ```
 
-./.yg/templates/Job.yaml
+./.yg/templates/job.yaml
 
 ```yaml
-path: {{questions.env}}/{{questions.cluster}/job/
-filename: {{questions.app}}-job.yaml
+path: {{.Questions.env}}/{{.Questions.cluster}}/job
+filename: {{.Questions.appName}}-job.yaml
 ---
 
-appName: {{quessions.appName}}
-env: {{quessions.env}}
-cluster: {{quessions.cluster}}
+appName: {{.Questions.appName}}
+env: {{.Questions.env}}
+cluster: {{.Questions.cluster}}
+```
+
+**任意のキーに対応したテンプレート例:**
+
+./.yg/templates/option-a.yaml
+
+```yaml
+path: {{.Questions.target-env}}/{{.Questions.something-2}}
+filename: {{.Questions.something-1}}-output.yaml
+---
+
+something1: {{.Questions.something-1}}
+something2: {{.Questions.something-2}}
+targetEnv: {{.Questions.target-env}}
 ```

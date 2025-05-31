@@ -17,6 +17,75 @@ func TestLoadConfig(t *testing.T) {
 
 	configFile := filepath.Join(configDir, ".yg-config.yaml")
 	configContent := `questions:
+  definitions:
+    app:
+      prompt: "アプリの種類はなんですか？"
+      choices:
+        - deployment
+        - job
+    env:
+      prompt: "環境名はなんですか？"
+      multiple: true
+      choices:
+        - dev
+        - staging
+  order:
+    - app
+    - env
+`
+
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write temp config file: %v", err)
+	}
+
+	// Change working directory to temp directory
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	// Test loading config
+	config, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	questions := config.Questions.GetQuestions()
+	if len(questions) != 2 {
+		t.Errorf("Expected 2 questions, got %d", len(questions))
+	}
+
+	if questions["app"].Prompt != "アプリの種類はなんですか？" {
+		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
+	}
+
+	if !questions["env"].Multiple {
+		t.Error("Expected env question to be multiple choice")
+	}
+
+	order := config.Questions.GetOrder()
+	expectedOrder := []string{"app", "env"}
+	if len(order) != len(expectedOrder) {
+		t.Errorf("Expected order length %d, got %d", len(expectedOrder), len(order))
+	}
+	for i, expected := range expectedOrder {
+		if i >= len(order) || order[i] != expected {
+			t.Errorf("Expected order[%d] = %s, got %v", i, expected, order)
+		}
+	}
+}
+
+func TestLoadConfigBackwardCompatibility(t *testing.T) {
+	// Test old format without order/definitions structure
+	tempDir := t.TempDir()
+	configDir := filepath.Join(tempDir, ".yg", "_templates")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, ".yg-config.yaml")
+	configContent := `questions:
   app:
     prompt: "アプリの種類はなんですか？"
     choices:
@@ -43,19 +112,26 @@ func TestLoadConfig(t *testing.T) {
 	// Test loading config
 	config, err := LoadConfig()
 	if err != nil {
-		t.Fatalf("Failed to load config: %v", err)
+		t.Fatalf("Failed to load old format config: %v", err)
 	}
 
-	if len(config.Questions) != 2 {
-		t.Errorf("Expected 2 questions, got %d", len(config.Questions))
+	questions := config.Questions.GetQuestions()
+	if len(questions) != 2 {
+		t.Errorf("Expected 2 questions, got %d", len(questions))
 	}
 
-	if config.Questions["app"].Prompt != "アプリの種類はなんですか？" {
-		t.Errorf("Unexpected app prompt: %s", config.Questions["app"].Prompt)
+	if questions["app"].Prompt != "アプリの種類はなんですか？" {
+		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
 	}
 
-	if !config.Questions["env"].Multiple {
+	if !questions["env"].Multiple {
 		t.Error("Expected env question to be multiple choice")
+	}
+
+	// Order should be auto-generated for old format
+	order := config.Questions.GetOrder()
+	if len(order) != 2 {
+		t.Errorf("Expected order length 2, got %d", len(order))
 	}
 }
 

@@ -11,7 +11,15 @@ import (
 
 // Config represents the main configuration structure.
 type Config struct {
-	Questions map[string]Question `yaml:"questions"`
+	Questions Questions `yaml:"questions"`
+}
+
+// Questions represents the questions configuration with order and definitions.
+type Questions struct {
+	Order       []string             `yaml:"order,omitempty"`
+	Definitions map[string]Question  `yaml:"definitions,omitempty"`
+	// For backward compatibility, support the old direct map format
+	DirectMap   map[string]Question  `yaml:",inline"`
 }
 
 // Question represents a single question configuration.
@@ -47,7 +55,54 @@ func LoadConfig() (*Config, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
+	// Normalize the config to handle both new and old formats
+	if err := config.Questions.normalize(); err != nil {
+		return nil, fmt.Errorf("failed to normalize config: %w", err)
+	}
+
 	return &config, nil
+}
+
+// GetQuestions returns the questions map, handling both new and old formats.
+func (q *Questions) GetQuestions() map[string]Question {
+	if q.Definitions != nil && len(q.Definitions) > 0 {
+		return q.Definitions
+	}
+	return q.DirectMap
+}
+
+// GetOrder returns the question order, generating one if not specified.
+func (q *Questions) GetOrder() []string {
+	if len(q.Order) > 0 {
+		return q.Order
+	}
+	
+	// Generate order from available questions
+	questions := q.GetQuestions()
+	order := make([]string, 0, len(questions))
+	for key := range questions {
+		order = append(order, key)
+	}
+	return order
+}
+
+// normalize handles backward compatibility by moving direct map to definitions if needed.
+func (q *Questions) normalize() error {
+	// If using old format (direct map), convert to new format
+	if q.Definitions == nil && q.DirectMap != nil {
+		q.Definitions = q.DirectMap
+		q.DirectMap = nil
+	}
+	
+	// If using new format but no order specified, generate from keys
+	if q.Definitions != nil && len(q.Order) == 0 {
+		q.Order = make([]string, 0, len(q.Definitions))
+		for key := range q.Definitions {
+			q.Order = append(q.Order, key)
+		}
+	}
+	
+	return nil
 }
 
 // GetChoices resolves choices for a question based on dependencies.
