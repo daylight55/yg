@@ -1,0 +1,2 @@
+# yg
+YAML template generator
