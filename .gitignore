@@ -33,11 +33,13 @@ go.work.sum
 
 # Built binary
 yg
+dist/
 
 # Generated test directories
 dev/
 staging/
 production/
+
 
 # OS generated files
 .DS_Store

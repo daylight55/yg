@@ -1,0 +1,88 @@
+version: '3'
+
+tasks:
+  deps:
+    desc: Download Go module dependencies
+    cmds:
+      - go mod download
+
+  install-tools:
+    desc: Install required development tools
+    cmds:
+      - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
+      - go install github.com/go-task/task/v3/cmd/task@latest
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run
+
+  test:
+    desc: Run tests with coverage
+    deps: [deps]
+    cmds:
+      - go test -v -race -coverprofile=coverage.out ./...
+
+  coverage:
+    desc: Check test coverage (must be >= 60%)
+    deps: [test]
+    cmds:
+      - |
+        total_coverage=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+        echo "Total test coverage: ${total_coverage}%"
+        if (( $(echo "$total_coverage < 60" | bc -l) )); then
+          echo "Test coverage is below 60%"
+          exit 1
+        fi
+
+  coverage-html:
+    desc: Generate HTML coverage report
+    deps: [test]
+    cmds:
+      - |
+        go tool cover -html=coverage.out -o coverage.html
+        echo "Coverage report generated: coverage.html"
+
+  build:
+    desc: Build the application
+    deps: [deps]
+    cmds:
+      - go build -v ./...
+
+  build-all:
+    desc: Build binaries for all platforms
+    deps: [deps]
+    cmds:
+      - GOOS=linux GOARCH=amd64 go build -o dist/yg-linux-amd64
+      - GOOS=darwin GOARCH=amd64 go build -o dist/yg-darwin-amd64
+      - GOOS=darwin GOARCH=arm64 go build -o dist/yg-darwin-arm64
+      - GOOS=windows GOARCH=amd64 go build -o dist/yg-windows-amd64.exe
+
+  clean:
+    desc: Clean build artifacts and coverage files
+    cmds:
+      - rm -f coverage.out coverage.html
+      - rm -rf dist/
+
+  ci:
+    desc: Run all CI checks locally
+    deps: [test, coverage, lint, build]
+    cmds:
+      - echo "All CI checks passed!"
+
+  fmt:
+    desc: Format Go code
+    cmds:
+      - go fmt ./...
+
+  vet:
+    desc: Run go vet
+    cmds:
+      - go vet ./...
+
+  check:
+    desc: Run quick checks (fmt, vet, build)
+    cmds:
+      - task: fmt
+      - task: vet
+      - task: build

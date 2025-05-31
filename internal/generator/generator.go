@@ -256,13 +256,13 @@ func (g *Generator) generateFiles() error {
 			}
 
 			// Create directory if it doesn't exist
-			if err := os.MkdirAll(path, 0755); err != nil {
+			if err := os.MkdirAll(path, 0o755); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", path, err)
 			}
 
 			// Write file
 			fullPath := filepath.Join(path, filename)
-			if err := os.WriteFile(fullPath, []byte(content), 0600); err != nil {
+			if err := os.WriteFile(fullPath, []byte(content), 0o600); err != nil {
 				return fmt.Errorf("failed to write file %s: %w", fullPath, err)
 			}
 		}

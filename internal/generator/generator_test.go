@@ -15,7 +15,7 @@ type MockPrompter struct {
 	callIndex          int
 }
 
-func (m *MockPrompter) Select(message string, options []string) (string, error) {
+func (m *MockPrompter) Select(_ string, options []string) (string, error) {
 	if m.callIndex < len(m.selectResults) {
 		result := m.selectResults[m.callIndex]
 		m.callIndex++
@@ -24,7 +24,7 @@ func (m *MockPrompter) Select(message string, options []string) (string, error) 
 	return options[0], nil
 }
 
-func (m *MockPrompter) MultiSelect(message string, options []string) ([]string, error) {
+func (m *MockPrompter) MultiSelect(_ string, options []string) ([]string, error) {
 	if m.callIndex < len(m.multiSelectResults) {
 		result := m.multiSelectResults[m.callIndex]
 		m.callIndex++
@@ -33,7 +33,7 @@ func (m *MockPrompter) MultiSelect(message string, options []string) ([]string, 
 	return options[:1], nil
 }
 
-func (m *MockPrompter) Search(message string, options []string) (string, error) {
+func (m *MockPrompter) Search(_ string, options []string) (string, error) {
 	if m.callIndex < len(m.searchResults) {
 		result := m.searchResults[m.callIndex]
 		m.callIndex++
@@ -42,7 +42,7 @@ func (m *MockPrompter) Search(message string, options []string) (string, error) 
 	return options[0], nil
 }
 
-func (m *MockPrompter) Confirm(message string) (bool, error) {
+func (m *MockPrompter) Confirm(_ string) (bool, error) {
 	if m.callIndex < len(m.confirmResults) {
 		result := m.confirmResults[m.callIndex]
 		m.callIndex++
