@@ -61,7 +61,7 @@ func (g *Generator) RunWithOptions(options *Options) error {
 
 	go func() {
 		<-sigChan
-		fmt.Println("\nOperation cancelled by user")
+		fmt.Println("\nOperation canceled by user")
 		cancel()
 		os.Exit(1)
 	}()
@@ -92,11 +92,11 @@ func (g *Generator) RunWithOptions(options *Options) error {
 
 		// Process questions in order
 		questionOrder := []string{"app", "appName", "env", "cluster"}
-		
+
 		for _, questionKey := range questionOrder {
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("operation cancelled")
+				return fmt.Errorf("operation canceled")
 			default:
 			}
 
@@ -132,7 +132,7 @@ func (g *Generator) RunWithOptions(options *Options) error {
 		}
 
 		if !confirmed {
-			fmt.Println("Generation cancelled")
+			fmt.Println("Generation canceled")
 			return nil
 		}
 	}
@@ -162,7 +162,7 @@ func (g *Generator) validateOptions(options *Options) error {
 	return nil
 }
 
-func (g *Generator) askQuestion(questionKey string, question config.Question) (interface{}, error) {
+func (g *Generator) askQuestion(_ string, question config.Question) (interface{}, error) {
 	choices, err := question.GetChoices(g.answers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get choices: %w", err)
@@ -216,7 +216,7 @@ func (g *Generator) generatePreview() error {
 			// Show the rendered content preview
 			lines := strings.Split(content, "\n")
 			for _, line := range lines {
-				if len(line) > 0 {
+				if line != "" {
 					fmt.Printf("%s\n", line)
 				}
 			}

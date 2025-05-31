@@ -24,14 +24,14 @@ type TemplateData struct {
 // LoadTemplate loads a template file.
 func LoadTemplate(templateType string) (*Template, error) {
 	templatePath := filepath.Join(".yg", "_templates", templateType+".yaml")
-	
+
 	data, err := os.ReadFile(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read template file %s: %w", templatePath, err)
 	}
 
 	content := string(data)
-	
+
 	// Split the content into metadata and template content
 	parts := strings.SplitN(content, "---", 2)
 	if len(parts) != 2 {
@@ -43,7 +43,7 @@ func LoadTemplate(templateType string) (*Template, error) {
 
 	// Parse metadata
 	tmpl := &Template{Content: templateContent}
-	
+
 	// Extract path and filename from metadata
 	lines := strings.Split(metaContent, "\n")
 	for _, line := range lines {
@@ -59,7 +59,7 @@ func LoadTemplate(templateType string) (*Template, error) {
 }
 
 // Render renders the template with the given data.
-func (t *Template) Render(data *TemplateData) (string, string, string, error) {
+func (t *Template) Render(data *TemplateData) (path, filename, content string, err error) {
 	funcMap := template.FuncMap{
 		"questions": func() map[string]interface{} {
 			return data.Questions
@@ -71,7 +71,7 @@ func (t *Template) Render(data *TemplateData) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to parse path template: %w", err)
 	}
-	
+
 	var pathBuf strings.Builder
 	if err := pathTmpl.Execute(&pathBuf, data); err != nil {
 		return "", "", "", fmt.Errorf("failed to render path: %w", err)
@@ -83,7 +83,7 @@ func (t *Template) Render(data *TemplateData) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to parse filename template: %w", err)
 	}
-	
+
 	var filenameBuf strings.Builder
 	if err := filenameTmpl.Execute(&filenameBuf, data); err != nil {
 		return "", "", "", fmt.Errorf("failed to render filename: %w", err)
@@ -95,7 +95,7 @@ func (t *Template) Render(data *TemplateData) (string, string, string, error) {
 	if err != nil {
 		return "", "", "", fmt.Errorf("failed to parse content template: %w", err)
 	}
-	
+
 	var contentBuf strings.Builder
 	if err := contentTmpl.Execute(&contentBuf, data); err != nil {
 		return "", "", "", fmt.Errorf("failed to render content: %w", err)

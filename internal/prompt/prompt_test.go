@@ -19,10 +19,10 @@ func TestNewPrompter(t *testing.T) {
 
 func TestPrompterInterface(t *testing.T) {
 	prompter := NewPrompter()
-	
+
 	// Test that prompter implements the interface
 	var _ PrompterInterface = prompter
-	
+
 	// These would require interactive input in a real terminal,
 	// so we just test that the methods exist
 	t.Log("Prompter methods are available")
@@ -31,7 +31,7 @@ func TestPrompterInterface(t *testing.T) {
 // Test the filter function logic used in Search
 func TestSearchFilter(t *testing.T) {
 	options := []string{"sample-server-1", "sample-server-2", "sample-job-1", "sample-job-2"}
-	
+
 	testCases := []struct {
 		filterValue string
 		expected    []string
@@ -43,7 +43,7 @@ func TestSearchFilter(t *testing.T) {
 		{"nonexistent", []string{}},
 		{"", options}, // Empty filter should match all
 	}
-	
+
 	for _, tc := range testCases {
 		var matches []string
 		for i, option := range options {
@@ -55,12 +55,12 @@ func TestSearchFilter(t *testing.T) {
 				matches = append(matches, options[i])
 			}
 		}
-		
+
 		if len(matches) != len(tc.expected) {
 			t.Errorf("Filter '%s': expected %d matches, got %d", tc.filterValue, len(tc.expected), len(matches))
 			continue
 		}
-		
+
 		for i, match := range matches {
 			if match != tc.expected[i] {
 				t.Errorf("Filter '%s': expected match '%s', got '%s'", tc.filterValue, tc.expected[i], match)

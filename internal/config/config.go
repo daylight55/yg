@@ -16,10 +16,10 @@ type Config struct {
 
 // Question represents a single question configuration.
 type Question struct {
-	Prompt    string                 `yaml:"prompt"`
-	Type      *QuestionType          `yaml:"type,omitempty"`
-	Choices   interface{}            `yaml:"choices"`
-	Multiple  bool                   `yaml:"multiple,omitempty"`
+	Prompt   string        `yaml:"prompt"`
+	Type     *QuestionType `yaml:"type,omitempty"`
+	Choices  interface{}   `yaml:"choices"`
+	Multiple bool          `yaml:"multiple,omitempty"`
 }
 
 // QuestionType defines the type of question.
@@ -36,7 +36,7 @@ type DynamicType struct {
 // LoadConfig loads the configuration from .yg-config.yaml file.
 func LoadConfig() (*Config, error) {
 	configPath := filepath.Join(".yg", "_templates", ".yg-config.yaml")
-	
+
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
@@ -66,7 +66,7 @@ func (q *Question) GetChoices(answers map[string]interface{}) ([]string, error) 
 	}
 }
 
-func (q *Question) resolveDynamicChoices(choices map[string]interface{}, answers map[string]interface{}) ([]string, error) {
+func (q *Question) resolveDynamicChoices(choices, answers map[string]interface{}) ([]string, error) {
 	// Special handling for cluster question based on selected environments
 	if q.Type != nil && q.Type.Dynamic != nil {
 		for _, dep := range q.Type.Dynamic.DependencyQuestions {
@@ -76,7 +76,7 @@ func (q *Question) resolveDynamicChoices(choices map[string]interface{}, answers
 				if !exists {
 					return nil, fmt.Errorf("dependency answer for env not found")
 				}
-				
+
 				var envs []string
 				switch envValue := envAnswer.(type) {
 				case []string:
@@ -86,25 +86,29 @@ func (q *Question) resolveDynamicChoices(choices map[string]interface{}, answers
 				default:
 					return nil, fmt.Errorf("invalid env answer type: %T", envValue)
 				}
-				
+
 				// Collect all cluster choices from selected environments
 				var allClusters []string
 				clusterMap := make(map[string]bool) // To avoid duplicates
-				
+
 				for _, env := range envs {
-					if envChoices, exists := choices[env]; exists {
-						if clusterList, ok := envChoices.([]interface{}); ok {
-							for _, cluster := range clusterList {
-								clusterStr := fmt.Sprintf("%v", cluster)
-								if !clusterMap[clusterStr] {
-									allClusters = append(allClusters, clusterStr)
-									clusterMap[clusterStr] = true
-								}
-							}
+					envChoices, exists := choices[env]
+					if !exists {
+						continue
+					}
+					clusterList, ok := envChoices.([]interface{})
+					if !ok {
+						continue
+					}
+					for _, cluster := range clusterList {
+						clusterStr := fmt.Sprintf("%v", cluster)
+						if !clusterMap[clusterStr] {
+							allClusters = append(allClusters, clusterStr)
+							clusterMap[clusterStr] = true
 						}
 					}
 				}
-				
+
 				return allClusters, nil
 			}
 		}
@@ -112,20 +116,20 @@ func (q *Question) resolveDynamicChoices(choices map[string]interface{}, answers
 
 	// Handle other dynamic dependencies
 	current := choices
-	
+
 	if q.Type != nil && q.Type.Dynamic != nil {
 		for _, dep := range q.Type.Dynamic.DependencyQuestions {
 			answer, exists := answers[dep]
 			if !exists {
 				return nil, fmt.Errorf("dependency answer for %s not found", dep)
 			}
-			
+
 			answerStr := fmt.Sprintf("%v", answer)
 			next, exists := current[answerStr]
 			if !exists {
 				return nil, fmt.Errorf("no choices found for %s = %s", dep, answerStr)
 			}
-			
+
 			switch nextValue := next.(type) {
 			case map[string]interface{}:
 				current = nextValue
@@ -140,6 +144,6 @@ func (q *Question) resolveDynamicChoices(choices map[string]interface{}, answers
 			}
 		}
 	}
-	
+
 	return nil, fmt.Errorf("unable to resolve choices")
 }

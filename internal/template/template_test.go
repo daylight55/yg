@@ -27,15 +27,15 @@ metadata:
 spec:
   replicas: 3`
 
-	err = os.WriteFile(templateFile, []byte(templateContent), 0644)
+	err = os.WriteFile(templateFile, []byte(templateContent), 0600)
 	if err != nil {
 		t.Fatalf("Failed to write temp template file: %v", err)
 	}
 
 	// Change working directory to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Test loading template
 	tmpl, err := LoadTemplate("deployment")
@@ -61,8 +61,8 @@ spec:
 func TestLoadTemplateFileNotFound(t *testing.T) {
 	tempDir := t.TempDir()
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	_, err := LoadTemplate("nonexistent")
 	if err == nil {
@@ -84,14 +84,14 @@ func TestLoadTemplateInvalidFormat(t *testing.T) {
 filename: {{.Questions.appName}}.yaml
 content without separator`
 
-	err = os.WriteFile(templateFile, []byte(templateContent), 0644)
+	err = os.WriteFile(templateFile, []byte(templateContent), 0600)
 	if err != nil {
 		t.Fatalf("Failed to write temp template file: %v", err)
 	}
 
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	_, err = LoadTemplate("invalid")
 	if err == nil {

@@ -30,15 +30,15 @@ func TestLoadConfig(t *testing.T) {
       - staging
 `
 
-	err = os.WriteFile(configFile, []byte(configContent), 0644)
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
 	if err != nil {
 		t.Fatalf("Failed to write temp config file: %v", err)
 	}
 
 	// Change working directory to temp directory
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	// Test loading config
 	config, err := LoadConfig()
@@ -62,8 +62,8 @@ func TestLoadConfig(t *testing.T) {
 func TestLoadConfigFileNotFound(t *testing.T) {
 	tempDir := t.TempDir()
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	_, err := LoadConfig()
 	if err == nil {
@@ -103,7 +103,7 @@ func TestQuestionGetDynamicChoices(t *testing.T) {
 			},
 		},
 		Choices: map[string]interface{}{
-			"dev": []interface{}{"dev-cluster-1", "dev-cluster-2"},
+			"dev":     []interface{}{"dev-cluster-1", "dev-cluster-2"},
 			"staging": []interface{}{"staging-cluster-1"},
 		},
 	}

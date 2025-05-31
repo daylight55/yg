@@ -34,11 +34,11 @@ func (p *Prompter) Select(message string, options []string) (string, error) {
 		Message: message,
 		Options: options,
 	}
-	
+
 	if err := survey.AskOne(prompt, &result); err != nil {
 		return "", fmt.Errorf("failed to get selection: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -49,11 +49,11 @@ func (p *Prompter) MultiSelect(message string, options []string) ([]string, erro
 		Message: message,
 		Options: options,
 	}
-	
+
 	if err := survey.AskOne(prompt, &result); err != nil {
 		return nil, fmt.Errorf("failed to get multi-selection: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -71,11 +71,11 @@ func (p *Prompter) Search(message string, options []string) (string, error) {
 			)
 		},
 	}
-	
+
 	if err := survey.AskOne(prompt, &result); err != nil {
 		return "", fmt.Errorf("failed to get search result: %w", err)
 	}
-	
+
 	return result, nil
 }
 
@@ -86,10 +86,10 @@ func (p *Prompter) Confirm(message string) (bool, error) {
 		Message: message,
 		Default: false,
 	}
-	
+
 	if err := survey.AskOne(prompt, &result); err != nil {
 		return false, fmt.Errorf("failed to get confirmation: %w", err)
 	}
-	
+
 	return result, nil
 }
