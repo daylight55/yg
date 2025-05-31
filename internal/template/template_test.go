@@ -112,7 +112,7 @@ spec:
   replicas: 3`,
 	}
 
-	data := &TemplateData{
+	data := &Data{
 		Questions: map[string]interface{}{
 			"appName": "test-app",
 			"env":     "dev",
@@ -151,7 +151,7 @@ func TestTemplateRenderInvalidTemplate(t *testing.T) {
 		Content:  "content",
 	}
 
-	data := &TemplateData{
+	data := &Data{
 		Questions: map[string]interface{}{
 			"appName": "test-app",
 		},

@@ -16,8 +16,8 @@ type Template struct {
 	Content  string
 }
 
-// TemplateData holds the data for template rendering.
-type TemplateData struct {
+// Data holds the data for template rendering.
+type Data struct {
 	Questions map[string]interface{}
 }
 
@@ -59,7 +59,7 @@ func LoadTemplate(templateType string) (*Template, error) {
 }
 
 // Render renders the template with the given data.
-func (t *Template) Render(data *TemplateData) (path, filename, content string, err error) {
+func (t *Template) Render(data *Data) (path, filename, content string, err error) {
 	funcMap := template.FuncMap{
 		"questions": func() map[string]interface{} {
 			return data.Questions

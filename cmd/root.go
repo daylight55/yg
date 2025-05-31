@@ -20,7 +20,7 @@ var rootCmd = &cobra.Command{
 	Use:   "yg",
 	Short: "YAML template generator",
 	Long:  `A CLI tool to generate YAML files from templates based on interactive prompts.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		options := &generator.Options{
 			AppType:    appType,
 			AppName:    appName,

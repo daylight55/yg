@@ -35,6 +35,7 @@ linters-settings:
       - octalLiteral
       - whyNoLint
       - wrapperFunc
+      - nestingReduce
 
 linters:
   enable:

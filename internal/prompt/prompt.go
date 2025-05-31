@@ -63,7 +63,7 @@ func (p *Prompter) Search(message string, options []string) (string, error) {
 	prompt := &survey.Select{
 		Message: message,
 		Options: options,
-		Filter: func(filterValue string, optionValue string, optionIndex int) bool {
+		Filter: func(filterValue string, optionValue string, _ int) bool {
 			// Implement case-insensitive prefix matching
 			return strings.HasPrefix(
 				strings.ToLower(optionValue),

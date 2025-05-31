@@ -196,7 +196,7 @@ func (g *Generator) generatePreview() error {
 	for _, env := range envs {
 		for _, cluster := range clusters {
 			// Create template data for this combination
-			templateData := &template.TemplateData{
+			templateData := &template.Data{
 				Questions: map[string]interface{}{
 					"app":     appType,
 					"appName": appName,
@@ -241,7 +241,7 @@ func (g *Generator) generateFiles() error {
 	for _, env := range envs {
 		for _, cluster := range clusters {
 			// Create template data for this combination
-			templateData := &template.TemplateData{
+			templateData := &template.Data{
 				Questions: map[string]interface{}{
 					"app":     appType,
 					"appName": appName,
@@ -262,7 +262,7 @@ func (g *Generator) generateFiles() error {
 
 			// Write file
 			fullPath := filepath.Join(path, filename)
-			if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+			if err := os.WriteFile(fullPath, []byte(content), 0600); err != nil {
 				return fmt.Errorf("failed to write file %s: %w", fullPath, err)
 			}
 		}

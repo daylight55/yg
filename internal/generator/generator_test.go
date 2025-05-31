@@ -143,8 +143,8 @@ metadata:
 func TestNewGenerator(t *testing.T) {
 	tempDir := setupTestEnvironment(t)
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	generator, err := New()
 	if err != nil {
@@ -167,8 +167,8 @@ func TestNewGenerator(t *testing.T) {
 func TestValidateOptions(t *testing.T) {
 	tempDir := setupTestEnvironment(t)
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	generator, err := New()
 	if err != nil {
@@ -240,8 +240,8 @@ func TestValidateOptions(t *testing.T) {
 func TestRunWithOptionsSkipPrompt(t *testing.T) {
 	tempDir := setupTestEnvironment(t)
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	generator, err := New()
 	if err != nil {
@@ -277,8 +277,8 @@ func TestRunWithOptionsSkipPrompt(t *testing.T) {
 func TestAskQuestion(t *testing.T) {
 	tempDir := setupTestEnvironment(t)
 	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
 
 	generator, err := New()
 	if err != nil {
