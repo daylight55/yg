@@ -7,12 +7,14 @@ on:
       - '**/*.go'
       - '**/go.mod'
       - '**/go.sum'
+      - '.mise.toml'
   pull_request:
     branches: [main]
     paths:
       - '**/*.go'
       - '**/go.mod'
       - '**/go.sum'
+      - '.mise.toml'
 
 jobs:
   test:
@@ -24,10 +26,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: ${{ matrix.go-version }}
+      - name: Install mise
+        uses: jdx/mise-action@v2
+
+      - name: Override Go version for matrix testing
+        run: mise use go@${{ matrix.go-version }}
 
       - name: Cache Go modules
         uses: actions/cache@v3
@@ -62,10 +65,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.24'
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v8
@@ -78,10 +79,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.24'
+      - name: Install mise
+        uses: jdx/mise-action@v2
 
       - name: Build
         run: go build -v ./...
@@ -91,12 +90,3 @@ jobs:
           GOOS=linux GOARCH=amd64 go build -o yg-linux-amd64
           GOOS=darwin GOARCH=amd64 go build -o yg-darwin-amd64
           GOOS=windows GOARCH=amd64 go build -o yg-windows-amd64.exe
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: binaries
-          path: |
-            yg-linux-amd64
-            yg-darwin-amd64
-            yg-windows-amd64.exe
