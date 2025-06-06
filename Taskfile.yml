@@ -11,6 +11,7 @@ tasks:
     cmds:
       - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.1.6
       - go install github.com/go-task/task/v3/cmd/task@latest
+      - go install github.com/axw/gocov/gocov@latest
 
   lint:
     desc: Run golangci-lint
@@ -25,15 +26,17 @@ tasks:
 
   coverage:
     desc: Check test coverage (must be >= 80%, excluding UI and CLI packages)
-    deps: [test]
+    deps: [test, install-tools]
     cmds:
       - |
-        # Calculate coverage excluding UI/CLI packages (prompt, cmd, main)
+        gocov convert coverage.out | gocov report
         total_coverage=$(go tool cover -func=coverage.out | grep -v "internal/prompt" | grep -v "/cmd/" | grep -v "main.go" | grep "total:" | awk '{print $3}' | sed 's/%//')
-        echo "Test coverage (excluding UI/CLI packages): ${total_coverage}%"
+        echo "Core business logic coverage: ${total_coverage}%"
         if (( $(echo "$total_coverage < 80" | bc -l) )); then
-          echo "Test coverage is below 80% (excluding UI/CLI packages)"
+          echo "❌ Coverage below 80%"
           exit 1
+        else
+          echo "✅ Coverage >= 80%"
         fi
 
   coverage-html:
@@ -43,6 +46,16 @@ tasks:
       - |
         go tool cover -html=coverage.out -o coverage.html
         echo "Coverage report generated: coverage.html"
+
+  coverage-detailed:
+    desc: Show detailed coverage report with all functions
+    deps: [test, install-tools]
+    cmds:
+      - echo "=== Detailed gocov Report ==="
+      - gocov convert coverage.out | gocov report
+      - echo ""
+      - echo "=== Function-by-Function Coverage ==="
+      - go tool cover -func=coverage.out
 
   build:
     desc: Build the application
