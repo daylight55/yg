@@ -141,7 +141,7 @@ func (g *Generator) validateOptions(options *Options) error {
 	if options.Answers == nil {
 		return fmt.Errorf("answers map is required")
 	}
-	
+
 	// Validate that all required questions have answers
 	questions := g.config.Questions.GetQuestions()
 	for questionKey := range questions {
@@ -149,7 +149,7 @@ func (g *Generator) validateOptions(options *Options) error {
 			return fmt.Errorf("answer for question '%s' is required", questionKey)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -162,7 +162,7 @@ func (g *Generator) determineTemplateAndMultiValues() (string, map[string][]stri
 	// Look for the first non-multi question to use as template type
 	// This is a heuristic - in the future this could be configurable
 	questionOrder := g.config.Questions.GetOrder()
-	
+
 	for _, questionKey := range questionOrder {
 		question, exists := questions[questionKey]
 		if !exists {
@@ -200,7 +200,7 @@ func (g *Generator) generateCombinations(multiValueQuestions map[string][]string
 	// Extract keys and values for combination generation
 	keys := make([]string, 0, len(multiValueQuestions))
 	values := make([][]string, 0, len(multiValueQuestions))
-	
+
 	for key, vals := range multiValueQuestions {
 		keys = append(keys, key)
 		values = append(values, vals)
@@ -208,11 +208,14 @@ func (g *Generator) generateCombinations(multiValueQuestions map[string][]string
 
 	var combinations []map[string]interface{}
 	g.generateCombinationsRecursive(keys, values, 0, make(map[string]string), &combinations)
-	
+
 	return combinations
 }
 
-func (g *Generator) generateCombinationsRecursive(keys []string, values [][]string, index int, current map[string]string, result *[]map[string]interface{}) {
+func (g *Generator) generateCombinationsRecursive(
+	keys []string, values [][]string, index int,
+	current map[string]string, result *[]map[string]interface{},
+) {
 	if index >= len(keys) {
 		// Create a copy of the base answers and override with current combination
 		combination := g.copyAnswers()
@@ -231,11 +234,11 @@ func (g *Generator) generateCombinationsRecursive(keys []string, values [][]stri
 }
 
 func (g *Generator) copyAnswers() map[string]interface{} {
-	copy := make(map[string]interface{})
+	result := make(map[string]interface{})
 	for key, value := range g.answers {
-		copy[key] = value
+		result[key] = value
 	}
-	return copy
+	return result
 }
 
 func (g *Generator) askQuestion(_ string, question config.Question) (interface{}, error) {

@@ -16,10 +16,10 @@ type Config struct {
 
 // Questions represents the questions configuration with order and definitions.
 type Questions struct {
-	Order       []string             `yaml:"order,omitempty"`
-	Definitions map[string]Question  `yaml:"definitions,omitempty"`
+	Order       []string            `yaml:"order,omitempty"`
+	Definitions map[string]Question `yaml:"definitions,omitempty"`
 	// For backward compatibility, support the old direct map format
-	DirectMap   map[string]Question  `yaml:",inline"`
+	DirectMap map[string]Question `yaml:",inline"`
 }
 
 // Question represents a single question configuration.
@@ -56,16 +56,14 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Normalize the config to handle both new and old formats
-	if err := config.Questions.normalize(); err != nil {
-		return nil, fmt.Errorf("failed to normalize config: %w", err)
-	}
+	config.Questions.normalize()
 
 	return &config, nil
 }
 
 // GetQuestions returns the questions map, handling both new and old formats.
 func (q *Questions) GetQuestions() map[string]Question {
-	if q.Definitions != nil && len(q.Definitions) > 0 {
+	if len(q.Definitions) > 0 {
 		return q.Definitions
 	}
 	return q.DirectMap
@@ -76,7 +74,7 @@ func (q *Questions) GetOrder() []string {
 	if len(q.Order) > 0 {
 		return q.Order
 	}
-	
+
 	// Generate order from available questions
 	questions := q.GetQuestions()
 	order := make([]string, 0, len(questions))
@@ -87,13 +85,13 @@ func (q *Questions) GetOrder() []string {
 }
 
 // normalize handles backward compatibility by moving direct map to definitions if needed.
-func (q *Questions) normalize() error {
+func (q *Questions) normalize() {
 	// If using old format (direct map), convert to new format
 	if q.Definitions == nil && q.DirectMap != nil {
 		q.Definitions = q.DirectMap
 		q.DirectMap = nil
 	}
-	
+
 	// If using new format but no order specified, generate from keys
 	if q.Definitions != nil && len(q.Order) == 0 {
 		q.Order = make([]string, 0, len(q.Definitions))
@@ -101,8 +99,6 @@ func (q *Questions) normalize() error {
 			q.Order = append(q.Order, key)
 		}
 	}
-	
-	return nil
 }
 
 // GetChoices resolves choices for a question based on dependencies.

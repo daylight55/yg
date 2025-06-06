@@ -82,35 +82,18 @@ func TestPrompterStructure(t *testing.T) {
 }
 
 // Test error handling for empty options (conceptual test)
-func TestPrompterMethodsExist(t *testing.T) {
+func TestPrompterMethodsExist(_ *testing.T) {
 	prompter := NewPrompter()
 
 	// Test that all required methods exist and have correct signatures
 	// These tests verify the method signatures without actually calling them
-	
-	// Test Select method signature
-	var selectFunc func(string, []string) (string, error) = prompter.Select
-	if selectFunc == nil {
-		t.Error("Select method should exist")
-	}
 
-	// Test MultiSelect method signature  
-	var multiSelectFunc func(string, []string) ([]string, error) = prompter.MultiSelect
-	if multiSelectFunc == nil {
-		t.Error("MultiSelect method should exist")
-	}
-
-	// Test Search method signature
-	var searchFunc func(string, []string) (string, error) = prompter.Search
-	if searchFunc == nil {
-		t.Error("Search method should exist")
-	}
-
-	// Test Confirm method signature
-	var confirmFunc func(string) (bool, error) = prompter.Confirm
-	if confirmFunc == nil {
-		t.Error("Confirm method should exist")
-	}
+	// Test method signatures by attempting to assign them
+	// This verifies the methods exist and have correct signatures
+	_ = prompter.Select
+	_ = prompter.MultiSelect
+	_ = prompter.Search
+	_ = prompter.Confirm
 }
 
 // Test the filter function used in Search more comprehensively
@@ -140,7 +123,7 @@ func TestSearchFilterFunction(t *testing.T) {
 				strings.ToLower(tc.filterValue),
 			)
 			if result != tc.expected {
-				t.Errorf("Filter('%s', '%s'): expected %v, got %v", 
+				t.Errorf("Filter('%s', '%s'): expected %v, got %v",
 					tc.filterValue, tc.optionValue, tc.expected, result)
 			}
 		})
@@ -150,10 +133,10 @@ func TestSearchFilterFunction(t *testing.T) {
 // Test interface compliance
 func TestPrompterInterfaceCompliance(t *testing.T) {
 	prompter := NewPrompter()
-	
+
 	// Verify that Prompter implements PrompterInterface
 	var _ PrompterInterface = prompter
-	
+
 	// Test struct fields and basic setup
 	if prompter == nil {
 		t.Error("NewPrompter should return a non-nil prompter")
@@ -164,7 +147,7 @@ func TestPrompterInterfaceCompliance(t *testing.T) {
 func TestCoreConfiguration(t *testing.T) {
 	// Test that NewPrompter configures the core correctly
 	NewPrompter()
-	
+
 	// Verify color setting (should be false for consistent output)
 	if core.DisableColor {
 		t.Error("Expected core.DisableColor to be false after NewPrompter()")
@@ -175,11 +158,11 @@ func TestCoreConfiguration(t *testing.T) {
 func TestFilterLogicCoverage(t *testing.T) {
 	// Test various filter scenarios to ensure comprehensive coverage
 	testCases := []struct {
-		name          string
-		filterValue   string
-		optionValue   string
-		shouldMatch   bool
-		description   string
+		name        string
+		filterValue string
+		optionValue string
+		shouldMatch bool
+		description string
 	}{
 		{"empty filter", "", "any-value", true, "empty filter should match everything"},
 		{"exact match", "hello", "hello", true, "exact match should work"},
@@ -200,9 +183,9 @@ func TestFilterLogicCoverage(t *testing.T) {
 				strings.ToLower(tc.optionValue),
 				strings.ToLower(tc.filterValue),
 			)
-			
+
 			if result != tc.shouldMatch {
-				t.Errorf("%s: filter('%s', '%s') expected %v, got %v", 
+				t.Errorf("%s: filter('%s', '%s') expected %v, got %v",
 					tc.description, tc.filterValue, tc.optionValue, tc.shouldMatch, result)
 			}
 		})

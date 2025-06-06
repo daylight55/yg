@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+const (
+	testAppTypeDeployment = "deployment"
+)
+
 // MockPrompter implements PrompterInterface for testing
 type MockPrompter struct {
 	selectResults      []string
@@ -191,7 +195,7 @@ func TestValidateOptions(t *testing.T) {
 	// Test valid options
 	validOptions := &Options{
 		Answers: map[string]interface{}{
-			"app":     "deployment",
+			"app":     testAppTypeDeployment,
 			"appName": "test-app",
 			"env":     []string{"dev"},
 			"cluster": []string{"dev-cluster-1"},
@@ -218,7 +222,7 @@ func TestValidateOptions(t *testing.T) {
 	// Test missing required question
 	invalidOptions = &Options{
 		Answers: map[string]interface{}{
-			"app":     "deployment",
+			"app":     testAppTypeDeployment,
 			"appName": "test-app",
 			"env":     []string{"dev"},
 			// missing cluster
@@ -251,7 +255,7 @@ func TestRunWithOptionsSkipPrompt(t *testing.T) {
 
 	options := &Options{
 		Answers: map[string]interface{}{
-			"app":     "deployment",
+			"app":     testAppTypeDeployment,
 			"appName": "test-app",
 			"env":     []string{"dev"},
 			"cluster": []string{"dev-cluster-1"},
@@ -284,7 +288,7 @@ func TestAskQuestion(t *testing.T) {
 
 	// Mock the prompter for regular select
 	mockPrompter := &MockPrompter{
-		selectResults: []string{"deployment"},
+		selectResults: []string{testAppTypeDeployment},
 	}
 	generator.prompter = mockPrompter
 
@@ -295,8 +299,8 @@ func TestAskQuestion(t *testing.T) {
 		t.Fatalf("Failed to ask question: %v", err)
 	}
 
-	if answer != "deployment" {
-		t.Errorf("Expected answer 'deployment', got %s", answer)
+	if answer != testAppTypeDeployment {
+		t.Errorf("Expected answer '%s', got %s", testAppTypeDeployment, answer)
 	}
 }
 
@@ -314,10 +318,10 @@ func TestRun(t *testing.T) {
 	// Mock the prompter for interactive flow
 	// Order: app (select) -> appName (search) -> env (multiselect) -> cluster (multiselect) -> confirm
 	mockPrompter := &MockPrompter{
-		selectResults:      []string{"deployment"},           // app selection
-		searchResults:      []string{"sample-server-1"},     // appName search
+		selectResults:      []string{testAppTypeDeployment},        // app selection
+		searchResults:      []string{"sample-server-1"},            // appName search
 		multiSelectResults: [][]string{{"dev"}, {"dev-cluster-1"}}, // env, then cluster
-		confirmResults:     []bool{true},                    // final confirmation
+		confirmResults:     []bool{true},                           // final confirmation
 	}
 	generator.prompter = mockPrompter
 
@@ -340,7 +344,7 @@ func TestRun(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error walking directory: %v", err)
 	}
-	
+
 	if !found {
 		t.Error("No YAML files were generated")
 	}
@@ -389,7 +393,7 @@ func TestAskQuestionInteractiveSearch(t *testing.T) {
 
 	// Set up generator answers to satisfy dependencies
 	generator.answers = map[string]interface{}{
-		"app": "deployment",
+		"app": testAppTypeDeployment,
 	}
 
 	mockPrompter := &MockPrompter{
@@ -422,7 +426,7 @@ func TestDetermineTemplateAndMultiValues(t *testing.T) {
 
 	// Set up test answers
 	generator.answers = map[string]interface{}{
-		"app":     "deployment",
+		"app":     testAppTypeDeployment,
 		"appName": "test-app",
 		"env":     []string{"dev", "staging"},
 		"cluster": []string{"dev-cluster-1", "staging-cluster-1"},
@@ -433,8 +437,8 @@ func TestDetermineTemplateAndMultiValues(t *testing.T) {
 		t.Fatalf("Failed to determine template and multi-values: %v", err)
 	}
 
-	if templateType != "deployment" {
-		t.Errorf("Expected template type 'deployment', got %s", templateType)
+	if templateType != testAppTypeDeployment {
+		t.Errorf("Expected template type '%s', got %s", testAppTypeDeployment, templateType)
 	}
 
 	if len(multiValues) != 2 {
@@ -462,7 +466,7 @@ func TestGenerateCombinations(t *testing.T) {
 	}
 
 	generator.answers = map[string]interface{}{
-		"app":     "deployment",
+		"app":     testAppTypeDeployment,
 		"appName": "test-app",
 	}
 
@@ -472,7 +476,7 @@ func TestGenerateCombinations(t *testing.T) {
 	}
 
 	combinations := generator.generateCombinations(multiValues)
-	
+
 	// Should generate 2 * 2 = 4 combinations
 	expectedCount := 4
 	if len(combinations) != expectedCount {
@@ -481,8 +485,8 @@ func TestGenerateCombinations(t *testing.T) {
 
 	// Each combination should have all base answers plus the specific multi-value selections
 	for i, combination := range combinations {
-		if combination["app"] != "deployment" {
-			t.Errorf("Combination %d: expected app='deployment', got %v", i, combination["app"])
+		if combination["app"] != testAppTypeDeployment {
+			t.Errorf("Combination %d: expected app='%s', got %v", i, testAppTypeDeployment, combination["app"])
 		}
 		if combination["appName"] != "test-app" {
 			t.Errorf("Combination %d: expected appName='test-app', got %v", i, combination["appName"])
@@ -508,20 +512,20 @@ func TestGenerateCombinationsEmpty(t *testing.T) {
 	}
 
 	generator.answers = map[string]interface{}{
-		"app":     "deployment",
+		"app":     testAppTypeDeployment,
 		"appName": "test-app",
 	}
 
 	// No multi-value questions
 	combinations := generator.generateCombinations(map[string][]string{})
-	
+
 	// Should return single combination with all answers
 	if len(combinations) != 1 {
 		t.Errorf("Expected 1 combination, got %d", len(combinations))
 	}
 
-	if combinations[0]["app"] != "deployment" {
-		t.Errorf("Expected app='deployment', got %v", combinations[0]["app"])
+	if combinations[0]["app"] != testAppTypeDeployment {
+		t.Errorf("Expected app='%s', got %v", testAppTypeDeployment, combinations[0]["app"])
 	}
 }
 
@@ -547,7 +551,7 @@ func TestRunWithOptionsPrefilledAnswers(t *testing.T) {
 	// Pre-fill some answers
 	options := &Options{
 		Answers: map[string]interface{}{
-			"app": "deployment",
+			"app": testAppTypeDeployment,
 			"env": []string{"dev"},
 		},
 		SkipPrompt: false,
@@ -559,7 +563,7 @@ func TestRunWithOptionsPrefilledAnswers(t *testing.T) {
 	}
 
 	// Check that pre-filled answers were used
-	if generator.answers["app"] != "deployment" {
-		t.Errorf("Expected app='deployment', got %v", generator.answers["app"])
+	if generator.answers["app"] != testAppTypeDeployment {
+		t.Errorf("Expected app='%s', got %v", testAppTypeDeployment, generator.answers["app"])
 	}
 }

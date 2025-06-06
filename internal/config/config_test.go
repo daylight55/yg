@@ -6,6 +6,10 @@ import (
 	"testing"
 )
 
+const (
+	testAppPrompt = "アプリの種類はなんですか？"
+)
+
 func TestLoadConfig(t *testing.T) {
 	// Create temporary config directory and file
 	tempDir := t.TempDir()
@@ -55,7 +59,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("Expected 2 questions, got %d", len(questions))
 	}
 
-	if questions["app"].Prompt != "アプリの種類はなんですか？" {
+	if questions["app"].Prompt != testAppPrompt {
 		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
 	}
 
@@ -120,7 +124,7 @@ func TestLoadConfigBackwardCompatibility(t *testing.T) {
 		t.Errorf("Expected 2 questions, got %d", len(questions))
 	}
 
-	if questions["app"].Prompt != "アプリの種類はなんですか？" {
+	if questions["app"].Prompt != testAppPrompt {
 		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
 	}
 
@@ -322,7 +326,7 @@ func TestQuestionsGetOrderWithOrder(t *testing.T) {
 
 	order := questions.GetOrder()
 	expected := []string{"second", "first", "third"}
-	
+
 	if len(order) != len(expected) {
 		t.Errorf("Expected order length %d, got %d", len(expected), len(order))
 	}
@@ -362,10 +366,7 @@ func TestQuestionsNormalizeOldFormat(t *testing.T) {
 		},
 	}
 
-	err := questions.normalize()
-	if err != nil {
-		t.Fatalf("Failed to normalize old format: %v", err)
-	}
+	questions.normalize()
 
 	// Should move DirectMap to Definitions
 	if questions.Definitions == nil {
