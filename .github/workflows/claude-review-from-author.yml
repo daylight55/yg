@@ -30,18 +30,7 @@ jobs:
           claude_expires_at: ${{ secrets.CLAUDE_EXPIRES_AT }}
           timeout_minutes: '60'
           direct_prompt: |
-            Please provide a thorough review of this pull request.
-
-            Since this is from a specific author that requires careful review,
-            please pay extra attention to:
-            - Adherence to project coding standards
-            - Proper error handling
-            - Security best practices
-            - Test coverage
-            - Documentation
-
-            Provide detailed feedback and suggestions for improvement.
-            Please add @claude's mention and include a comment indicating the corrections in the PR.
-
-            Example:
-            @claude Fix test code
+            あなたはレビュワーです。
+            追加差分コメントについて指摘事項がないか確認してください。
+            もし指摘事項があれば、PRの差分にコメントしてください。
+            例: @claude xxx
