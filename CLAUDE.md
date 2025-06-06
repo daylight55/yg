@@ -5,6 +5,8 @@
 ## Claude Rule
 
 - 日本語で回答して
+- 修正後にREADME.md/CLAUDE,mdを修正して
+- 最後にGitコミットを実行して、GitHubにpushして。
 
 ## Guidelines
 
