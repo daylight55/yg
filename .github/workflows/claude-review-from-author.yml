@@ -41,3 +41,7 @@ jobs:
             - Documentation
 
             Provide detailed feedback and suggestions for improvement.
+            Please add @claude's mention and include a comment indicating the corrections in the PR.
+
+            Example:
+            @claude Fix test code
