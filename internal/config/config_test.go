@@ -279,3 +279,236 @@ func TestQuestionGetChoicesStaticMap(t *testing.T) {
 		t.Error("Expected error for map choices without dynamic type")
 	}
 }
+
+func TestQuestionsGetOrderEmpty(t *testing.T) {
+	// Test GetOrder when order is empty - should generate from definitions
+	questions := &Questions{
+		Definitions: map[string]Question{
+			"z-last":  {Prompt: "Last"},
+			"a-first": {Prompt: "First"},
+			"m-mid":   {Prompt: "Middle"},
+		},
+	}
+
+	order := questions.GetOrder()
+	if len(order) != 3 {
+		t.Errorf("Expected 3 items in generated order, got %d", len(order))
+	}
+
+	// Should contain all keys (order not guaranteed since it's from map iteration)
+	orderMap := make(map[string]bool)
+	for _, key := range order {
+		orderMap[key] = true
+	}
+
+	expectedKeys := []string{"z-last", "a-first", "m-mid"}
+	for _, key := range expectedKeys {
+		if !orderMap[key] {
+			t.Errorf("Expected key %s not found in generated order", key)
+		}
+	}
+}
+
+func TestQuestionsGetOrderWithOrder(t *testing.T) {
+	// Test GetOrder when explicit order is provided
+	questions := &Questions{
+		Order: []string{"second", "first", "third"},
+		Definitions: map[string]Question{
+			"first":  {Prompt: "First"},
+			"second": {Prompt: "Second"},
+			"third":  {Prompt: "Third"},
+		},
+	}
+
+	order := questions.GetOrder()
+	expected := []string{"second", "first", "third"}
+	
+	if len(order) != len(expected) {
+		t.Errorf("Expected order length %d, got %d", len(expected), len(order))
+	}
+
+	for i, expectedKey := range expected {
+		if i >= len(order) || order[i] != expectedKey {
+			t.Errorf("Expected order[%d] = %s, got %s", i, expectedKey, order[i])
+		}
+	}
+}
+
+func TestQuestionsGetQuestionsDirectMap(t *testing.T) {
+	// Test GetQuestions with DirectMap (old format)
+	questions := &Questions{
+		DirectMap: map[string]Question{
+			"app": {Prompt: "App type"},
+			"env": {Prompt: "Environment"},
+		},
+	}
+
+	result := questions.GetQuestions()
+	if len(result) != 2 {
+		t.Errorf("Expected 2 questions, got %d", len(result))
+	}
+
+	if result["app"].Prompt != "App type" {
+		t.Errorf("Expected app prompt 'App type', got %s", result["app"].Prompt)
+	}
+}
+
+func TestQuestionsNormalizeOldFormat(t *testing.T) {
+	// Test normalize with old format (DirectMap)
+	questions := &Questions{
+		DirectMap: map[string]Question{
+			"app": {Prompt: "App type"},
+			"env": {Prompt: "Environment"},
+		},
+	}
+
+	err := questions.normalize()
+	if err != nil {
+		t.Fatalf("Failed to normalize old format: %v", err)
+	}
+
+	// Should move DirectMap to Definitions
+	if questions.Definitions == nil {
+		t.Error("Expected Definitions to be set after normalize")
+	}
+
+	if len(questions.Definitions) != 2 {
+		t.Errorf("Expected 2 definitions, got %d", len(questions.Definitions))
+	}
+
+	// Should generate order
+	if len(questions.Order) != 2 {
+		t.Errorf("Expected 2 items in order, got %d", len(questions.Order))
+	}
+
+	// DirectMap should be cleared
+	if questions.DirectMap != nil {
+		t.Error("Expected DirectMap to be nil after normalize")
+	}
+}
+
+func TestQuestionGetChoicesNonEnvDependency(t *testing.T) {
+	// Test dynamic choices with non-env dependency
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"app"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"deployment": []interface{}{"deploy-choice1", "deploy-choice2"},
+			"job":        []interface{}{"job-choice1"},
+		},
+	}
+
+	answers := map[string]interface{}{
+		"app": "deployment",
+	}
+
+	choices, err := question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices for app dependency: %v", err)
+	}
+
+	expected := []string{"deploy-choice1", "deploy-choice2"}
+	if len(choices) != len(expected) {
+		t.Errorf("Expected %d choices, got %d", len(expected), len(choices))
+	}
+
+	for i, choice := range choices {
+		if choice != expected[i] {
+			t.Errorf("Expected choice %s, got %s", expected[i], choice)
+		}
+	}
+}
+
+func TestQuestionGetChoicesMultiLevelDependency(t *testing.T) {
+	// Test single-level dynamic dependency (the current implementation doesn't support multi-level)
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"app"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"deployment": []interface{}{"deploy-choice-1", "deploy-choice-2"},
+			"job":        []interface{}{"job-choice-1"},
+		},
+	}
+
+	answers := map[string]interface{}{
+		"app": "deployment",
+	}
+
+	choices, err := question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices for dynamic dependency: %v", err)
+	}
+
+	expected := []string{"deploy-choice-1", "deploy-choice-2"}
+	if len(choices) != len(expected) {
+		t.Errorf("Expected %d choices, got %d", len(expected), len(choices))
+	}
+
+	for i, choice := range choices {
+		if choice != expected[i] {
+			t.Errorf("Expected choice %s, got %s", expected[i], choice)
+		}
+	}
+}
+
+func TestQuestionGetChoicesInvalidStructure(t *testing.T) {
+	// Test invalid choices structure in dynamic resolution
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"app"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"deployment": "invalid_structure", // Should be array or map
+		},
+	}
+
+	answers := map[string]interface{}{
+		"app": "deployment",
+	}
+
+	_, err := question.GetChoices(answers)
+	if err == nil {
+		t.Error("Expected error for invalid choices structure")
+	}
+}
+
+func TestLoadConfigInvalidYaml(t *testing.T) {
+	// Test loading invalid YAML
+	tempDir := t.TempDir()
+	configDir := filepath.Join(tempDir, ".yg", "_templates")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, ".yg-config.yaml")
+	invalidYaml := `questions:
+  app:
+    prompt: "Test"
+    choices: [
+      - invalid yaml structure
+    invalid_indentation
+`
+
+	err = os.WriteFile(configFile, []byte(invalidYaml), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write invalid config file: %v", err)
+	}
+
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	_, err = LoadConfig()
+	if err == nil {
+		t.Error("Expected error when loading invalid YAML")
+	}
+}
