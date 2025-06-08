@@ -7,20 +7,8 @@ import (
 )
 
 const (
-	testAppPrompt = "アプリの種類はなんですか？"
-)
-
-func TestLoadConfig(t *testing.T) {
-	// Create temporary config directory and file
-	tempDir := t.TempDir()
-	configDir := filepath.Join(tempDir, ".yg", "_templates")
-	err := os.MkdirAll(configDir, 0755)
-	if err != nil {
-		t.Fatalf("Failed to create temp config directory: %v", err)
-	}
-
-	configFile := filepath.Join(configDir, ".yg-config.yaml")
-	configContent := `questions:
+	testAppPrompt     = "アプリの種類はなんですか？"
+	testConfigContent = `questions:
   definitions:
     app:
       prompt: "アプリの種類はなんですか？"
@@ -38,6 +26,19 @@ func TestLoadConfig(t *testing.T) {
     - app
     - env
 `
+)
+
+func TestLoadConfig(t *testing.T) {
+	// Create temporary config directory and file
+	tempDir := t.TempDir()
+	configDir := filepath.Join(tempDir, ".yg", "_templates")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, ".yg-config.yaml")
+	configContent := testConfigContent
 
 	err = os.WriteFile(configFile, []byte(configContent), 0600)
 	if err != nil {
@@ -837,24 +838,7 @@ func TestLoadConfigWithoutTemplateQuestion(t *testing.T) {
 	}
 
 	configFile := filepath.Join(configDir, "config.yaml")
-	configContent := `questions:
-  definitions:
-    app:
-      prompt: "アプリの種類はなんですか？"
-      choices:
-        - deployment
-        - job
-    env:
-      prompt: "環境名はなんですか？"
-      type:
-        multiple: true
-      choices:
-        - dev
-        - staging
-  order:
-    - app
-    - env
-`
+	configContent := testConfigContent
 
 	err = os.WriteFile(configFile, []byte(configContent), 0600)
 	if err != nil {

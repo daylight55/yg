@@ -186,7 +186,10 @@ func (g *Generator) determineTemplateAndMultiValues() (string, map[string][]stri
 		if str, ok := answer.(string); ok {
 			templateType = str
 		} else {
-			return "", nil, fmt.Errorf("template question '%s' must have a single string answer, got %T", templateQuestionKey, answer)
+			return "", nil, fmt.Errorf(
+				"template question '%s' must have a single string answer, got %T",
+				templateQuestionKey, answer,
+			)
 		}
 	} else {
 		// Fall back to heuristic: first non-multi question as template type

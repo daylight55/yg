@@ -9,6 +9,23 @@ import (
 
 const (
 	testAppTypeDeployment = "deployment"
+	testDeploymentContent = `path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
+filename: {{.Questions.appName}}-deployment.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}`
+
+	testJobContent = `path: {{.Questions.env}}/{{.Questions.cluster}}/job
+filename: {{.Questions.appName}}-job.yaml
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}`
 )
 
 // MockPrompter implements PrompterInterface for testing
@@ -136,14 +153,7 @@ func setupTestEnvironment(t *testing.T) string {
 
 	// Create template files
 	deploymentTemplate := filepath.Join(templateDir, "deployment.yaml")
-	deploymentContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
-filename: {{.Questions.appName}}-deployment.yaml
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.Questions.appName}}
-  namespace: {{.Questions.env}}`
+	deploymentContent := testDeploymentContent
 
 	err = os.WriteFile(deploymentTemplate, []byte(deploymentContent), 0644)
 	if err != nil {
@@ -151,14 +161,7 @@ metadata:
 	}
 
 	jobTemplate := filepath.Join(templateDir, "job.yaml")
-	jobContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/job
-filename: {{.Questions.appName}}-job.yaml
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{.Questions.appName}}
-  namespace: {{.Questions.env}}`
+	jobContent := testJobContent
 
 	err = os.WriteFile(jobTemplate, []byte(jobContent), 0644)
 	if err != nil {
@@ -721,14 +724,7 @@ func setupTestEnvironmentWithTemplateQuestion(t *testing.T) string {
 
 	// Create template files
 	deploymentTemplate := filepath.Join(templateDir, "deployment.yaml")
-	deploymentContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
-filename: {{.Questions.appName}}-deployment.yaml
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: {{.Questions.appName}}
-  namespace: {{.Questions.env}}`
+	deploymentContent := testDeploymentContent
 
 	err = os.WriteFile(deploymentTemplate, []byte(deploymentContent), 0644)
 	if err != nil {
@@ -736,14 +732,7 @@ metadata:
 	}
 
 	jobTemplate := filepath.Join(templateDir, "job.yaml")
-	jobContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/job
-filename: {{.Questions.appName}}-job.yaml
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: {{.Questions.appName}}
-  namespace: {{.Questions.env}}`
+	jobContent := testJobContent
 
 	err = os.WriteFile(jobTemplate, []byte(jobContent), 0644)
 	if err != nil {
