@@ -287,22 +287,25 @@ func (g *Generator) generatePreview() error {
 			Questions: combination,
 		}
 
-		path, filename, content, err := tmpl.Render(templateData)
+		renderResult, err := tmpl.Render(templateData)
 		if err != nil {
 			return fmt.Errorf("failed to render template: %w", err)
 		}
 
-		fullPath := filepath.Join(path, filename)
-		fmt.Printf("* %s\n\n", fullPath)
+		// Show preview for all files in the result
+		for _, file := range renderResult.Files {
+			fullPath := filepath.Join(file.Path, file.Filename)
+			fmt.Printf("* %s\n\n", fullPath)
 
-		// Show the rendered content preview
-		lines := strings.Split(content, "\n")
-		for _, line := range lines {
-			if line != "" {
-				fmt.Printf("%s\n", line)
+			// Show the rendered content preview
+			lines := strings.Split(file.Content, "\n")
+			for _, line := range lines {
+				if line != "" {
+					fmt.Printf("%s\n", line)
+				}
 			}
+			fmt.Println()
 		}
-		fmt.Println()
 	}
 
 	return nil
@@ -329,20 +332,23 @@ func (g *Generator) generateFiles() error {
 			Questions: combination,
 		}
 
-		path, filename, content, err := tmpl.Render(templateData)
+		renderResult, err := tmpl.Render(templateData)
 		if err != nil {
 			return fmt.Errorf("failed to render template: %w", err)
 		}
 
-		// Create directory if it doesn't exist
-		if err := os.MkdirAll(path, 0o755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", path, err)
-		}
+		// Write all files in the result
+		for _, file := range renderResult.Files {
+			// Create directory if it doesn't exist
+			if err := os.MkdirAll(file.Path, 0o755); err != nil {
+				return fmt.Errorf("failed to create directory %s: %w", file.Path, err)
+			}
 
-		// Write file
-		fullPath := filepath.Join(path, filename)
-		if err := os.WriteFile(fullPath, []byte(content), 0o600); err != nil {
-			return fmt.Errorf("failed to write file %s: %w", fullPath, err)
+			// Write file
+			fullPath := filepath.Join(file.Path, file.Filename)
+			if err := os.WriteFile(fullPath, []byte(file.Content), 0o600); err != nil {
+				return fmt.Errorf("failed to write file %s: %w", fullPath, err)
+			}
 		}
 	}
 

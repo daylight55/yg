@@ -11,7 +11,14 @@ import (
 
 // Config represents the main configuration structure.
 type Config struct {
-	Questions Questions `yaml:"questions"`
+	Questions Questions                 `yaml:"questions"`
+	Templates map[string]TemplateConfig `yaml:"templates,omitempty"`
+}
+
+// TemplateConfig represents template configuration.
+type TemplateConfig struct {
+	Type string `yaml:"type"` // "file" or "directory"
+	Path string `yaml:"path"` // path to template file or directory
 }
 
 // Questions represents the questions configuration with order and definitions.

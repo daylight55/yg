@@ -101,6 +101,7 @@ content without separator`
 
 func TestTemplateRender(t *testing.T) {
 	tmpl := &Template{
+		Type:     TypeFile,
 		Path:     "{{.Questions.env}}/{{.Questions.cluster}}/deployment",
 		Filename: "{{.Questions.appName}}-deployment.yaml",
 		Content: `apiVersion: apps/v1
@@ -120,32 +121,38 @@ spec:
 		},
 	}
 
-	path, filename, content, err := tmpl.Render(data)
+	result, err := tmpl.Render(data)
 	if err != nil {
 		t.Fatalf("Failed to render template: %v", err)
 	}
 
+	if len(result.Files) != 1 {
+		t.Fatalf("Expected 1 file, got %d", len(result.Files))
+	}
+
+	file := result.Files[0]
 	expectedPath := "dev/dev-cluster-1/deployment"
-	if path != expectedPath {
-		t.Errorf("Expected path %s, got %s", expectedPath, path)
+	if file.Path != expectedPath {
+		t.Errorf("Expected path %s, got %s", expectedPath, file.Path)
 	}
 
 	expectedFilename := "test-app-deployment.yaml"
-	if filename != expectedFilename {
-		t.Errorf("Expected filename %s, got %s", expectedFilename, filename)
+	if file.Filename != expectedFilename {
+		t.Errorf("Expected filename %s, got %s", expectedFilename, file.Filename)
 	}
 
-	if !strings.Contains(content, "name: test-app") {
+	if !strings.Contains(file.Content, "name: test-app") {
 		t.Error("Rendered content should contain 'name: test-app'")
 	}
 
-	if !strings.Contains(content, "namespace: dev") {
+	if !strings.Contains(file.Content, "namespace: dev") {
 		t.Error("Rendered content should contain 'namespace: dev'")
 	}
 }
 
 func TestTemplateRenderInvalidTemplate(t *testing.T) {
 	tmpl := &Template{
+		Type:     TypeFile,
 		Path:     "{{.InvalidField}}",
 		Filename: "test.yaml",
 		Content:  "content",
@@ -157,8 +164,154 @@ func TestTemplateRenderInvalidTemplate(t *testing.T) {
 		},
 	}
 
-	_, _, _, err := tmpl.Render(data)
+	_, err := tmpl.Render(data)
 	if err == nil {
 		t.Error("Expected error for invalid template field")
 	}
+}
+
+func TestLoadDirectoryTemplate(t *testing.T) {
+	// Create test directory
+	testDir := t.TempDir()
+	templateDir := filepath.Join(testDir, ".yg", "_templates", "microservice")
+	if err := os.MkdirAll(templateDir, 0o755); err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+
+	// Change to test directory
+	originalDir, _ := os.Getwd()
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to change back to original directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("Failed to change to test directory: %v", err)
+	}
+
+	// Create directory template config
+	configContent := `output:
+  base_path: "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}"
+files:
+  deployment.yaml:
+    filename: "{{.Questions.appName}}-deployment.yaml"
+  service.yaml:
+    filename: "{{.Questions.appName}}-service.yaml"
+    enabled: "{{if eq .Questions.needsService \"yes\"}}true{{else}}false{{end}}"`
+
+	configPath := filepath.Join(templateDir, ".template-config.yaml")
+	if err := os.WriteFile(configPath, []byte(configContent), 0o600); err != nil {
+		t.Fatalf("Failed to write template config: %v", err)
+	}
+
+	// Create template files
+	deploymentContent := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}`
+
+	deploymentPath := filepath.Join(templateDir, "deployment.yaml")
+	if err := os.WriteFile(deploymentPath, []byte(deploymentContent), 0o600); err != nil {
+		t.Fatalf("Failed to write deployment template: %v", err)
+	}
+
+	serviceContent := `apiVersion: v1
+kind: Service
+metadata:
+  name: {{.Questions.appName}}`
+
+	servicePath := filepath.Join(templateDir, "service.yaml")
+	if err := os.WriteFile(servicePath, []byte(serviceContent), 0o600); err != nil {
+		t.Fatalf("Failed to write service template: %v", err)
+	}
+
+	// Test loading directory template
+	tmpl, err := loadDirectoryTemplate("microservice")
+	if err != nil {
+		t.Fatalf("Failed to load directory template: %v", err)
+	}
+
+	if tmpl.Type != TypeDirectory {
+		t.Errorf("Expected template type to be directory, got %s", tmpl.Type)
+	}
+
+	expectedBasePath := "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}"
+	if tmpl.BasePath != expectedBasePath {
+		t.Errorf("Expected base path %s, got %s", expectedBasePath, tmpl.BasePath)
+	}
+
+	if len(tmpl.Files) != 2 {
+		t.Errorf("Expected 2 files, got %d", len(tmpl.Files))
+	}
+}
+
+func TestRenderDirectory(t *testing.T) {
+	tmpl := &Template{
+		Type:     TypeDirectory,
+		BasePath: "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}",
+		Files: map[string]*FileTemplate{
+			"deployment.yaml": {
+				Filename: "{{.Questions.appName}}-deployment.yaml",
+				Content:  "appName: {{.Questions.appName}}",
+			},
+			"service.yaml": {
+				Filename: "{{.Questions.appName}}-service.yaml",
+				Content:  "serviceName: {{.Questions.appName}}",
+				Enabled:  "{{if eq .Questions.needsService \"yes\"}}true{{else}}false{{end}}",
+			},
+		},
+	}
+
+	t.Run("with service enabled", func(t *testing.T) {
+		data := &Data{
+			Questions: map[string]interface{}{
+				"appName":      "test-app",
+				"env":          "dev",
+				"cluster":      "dev-cluster-1",
+				"needsService": "yes",
+			},
+		}
+
+		result, err := tmpl.Render(data)
+		if err != nil {
+			t.Fatalf("Failed to render template: %v", err)
+		}
+
+		if len(result.Files) != 2 {
+			t.Fatalf("Expected 2 files, got %d", len(result.Files))
+		}
+
+		// Check that both files have correct base path
+		expectedPath := "dev/dev-cluster-1/test-app"
+		for i, file := range result.Files {
+			if file.Path != expectedPath {
+				t.Errorf("File %d: Expected path %s, got %s", i, expectedPath, file.Path)
+			}
+		}
+	})
+
+	t.Run("with service disabled", func(t *testing.T) {
+		data := &Data{
+			Questions: map[string]interface{}{
+				"appName":      "test-app",
+				"env":          "dev",
+				"cluster":      "dev-cluster-1",
+				"needsService": "no",
+			},
+		}
+
+		result, err := tmpl.Render(data)
+		if err != nil {
+			t.Fatalf("Failed to render template: %v", err)
+		}
+
+		if len(result.Files) != 1 {
+			t.Fatalf("Expected 1 file (service disabled), got %d", len(result.Files))
+		}
+
+		file := result.Files[0]
+		if !strings.Contains(file.Filename, "deployment") {
+			t.Errorf("Expected deployment file to remain, got %s", file.Filename)
+		}
+	})
 }
