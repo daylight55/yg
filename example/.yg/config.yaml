@@ -48,8 +48,6 @@ questions:
           - sample-job-5
     env:
       prompt: '環境名はなんですか？'
-      type:
-        multiple: true
       choices:
         - dev
         - staging
