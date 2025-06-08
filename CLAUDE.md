@@ -69,22 +69,21 @@ $ yaml-generator
 
 # プロンプトが出る。矢印キーで選択し、スペースキーでチェック、Enterで次に進める。
 Q. アプリの種類はなんですか？
-[x] deployment
-[] job
+[x] microservice   # ディレクトリテンプレート（複数ファイル一括生成）
+[] deployment      # 単一ファイルテンプレート
+[] job             # 単一ファイルテンプレート
 
 # Interactive search機能：リアルタイム検索で選択肢をフィルタリング
 Q. アプリ名は何ですか？ (入力で検索、↓↑で選択):
-> sample-job-1
-sample-job-1  # 完全一致している選択肢がハイライト表示
+> sample-api-1
+sample-api-1  # 完全一致している選択肢がハイライト表示
 
 # または部分文字列でリアルタイムフィルタリング
 Q. アプリ名は何ですか？ (入力で検索、↓↑で選択):
-> job
-sample-job-1
-sample-job-2  # "job"を含む選択肢のみリアルタイム表示
-sample-job-3
-sample-job-4
-sample-job-5
+> api
+sample-api-1
+sample-api-2  # "api"を含む選択肢のみリアルタイム表示
+sample-api-3
 
 # 文字を入力するとリアルタイムで選択肢が絞り込まれ、矢印キーで選択してEnterで決定
 
@@ -104,24 +103,21 @@ Q. クラスターはどこですか？
 
 Output:
 
-* dev/dev-cluster-1/deployment/sample-job-1-deployment.yaml
+# ディレクトリテンプレート（microservice）選択時の複数ファイル出力例
+* dev/dev-cluster-1/sample-api-1/sample-api-1-deployment.yaml
+* dev/dev-cluster-1/sample-api-1/sample-api-1-service.yaml
+* dev/dev-cluster-1/sample-api-1/sample-api-1-configmap.yaml
+* dev/dev-cluster-1/sample-api-1/sample-api-1-ingress.yaml
 
-appName: sample-job-1
-env: dev
-cluster: dev-cluster-1
+dev/dev-cluster-2/sample-api-1/sample-api-1-deployment.yaml
+dev/dev-cluster-2/sample-api-1/sample-api-1-service.yaml
+dev/dev-cluster-2/sample-api-1/sample-api-1-configmap.yaml
+dev/dev-cluster-2/sample-api-1/sample-api-1-ingress.yaml
 
-dev/dev-cluster-2/deployment/sample-job-1-deployment.yaml
-
-appName: sample-job-1
-env: dev
-cluster: dev-cluster-2
-
-
-dev/dev-cluster-3/deployment/sample-job-1-deployment.yaml
-
-appName: sample-job-1
-env: dev
-cluster: dev-cluster-3
+dev/dev-cluster-3/sample-api-1/sample-api-1-deployment.yaml
+dev/dev-cluster-3/sample-api-1/sample-api-1-service.yaml
+dev/dev-cluster-3/sample-api-1/sample-api-1-configmap.yaml
+dev/dev-cluster-3/sample-api-1/sample-api-1-ingress.yaml
 
 
 Q. 出力して問題ないですか? [Y/N]
@@ -131,9 +127,21 @@ Q. 出力して問題ないですか? [Y/N]
 generated!
 ```
 
-`.yg-config.yaml`
+**拡張された`.yg-config.yaml`（ディレクトリテンプレート対応）**
 
 ```yaml
+# テンプレート設定（新機能）
+templates:
+  microservice:
+    type: directory   # ディレクトリテンプレート
+    path: microservice
+  deployment:
+    type: file       # 単一ファイルテンプレート（従来）
+    path: deployment.yaml
+  job:
+    type: file
+    path: job.yaml
+
 questions:
   # 質問の実行順序を明示的に指定
   order:
@@ -146,8 +154,9 @@ questions:
     app:
       prompt: "アプリの種類はなんですか？"
       choices:
-        - deployment
-        - job
+        - microservice  # ディレクトリテンプレート
+        - deployment    # 従来の単一ファイル
+        - job          # 従来の単一ファイル
     appName:
       prompt: "アプリ名は何ですか？"
       type:
@@ -155,6 +164,10 @@ questions:
           dependency_questions: ["app"] # 依存する回答を指定
         interactive: true
       choices:
+        microservice:
+          - sample-api-1
+          - sample-api-2
+          - sample-api-3
         deployment:
           - sample-server-1
           - sample-server-2
@@ -248,9 +261,55 @@ questions:
     choices: ["dev", "prod"]
 ```
 
-テンプレートファイル
+## テンプレートファイル
 
-./.yg/templates/deployment.yaml
+### ディレクトリテンプレート（新機能）
+
+./.yg/_templates/microservice/.template-config.yaml
+
+```yaml
+output:
+  base_path: "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}"
+
+files:
+  deployment.yaml:
+    filename: "{{.Questions.appName}}-deployment.yaml"
+  service.yaml:
+    filename: "{{.Questions.appName}}-service.yaml"
+  configmap.yaml:
+    filename: "{{.Questions.appName}}-configmap.yaml"
+  ingress.yaml:
+    filename: "{{.Questions.appName}}-ingress.yaml"
+```
+
+./.yg/_templates/microservice/deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{.Questions.appName}}
+  template:
+    metadata:
+      labels:
+        app: {{.Questions.appName}}
+    spec:
+      containers:
+      - name: {{.Questions.appName}}
+        image: {{.Questions.appName}}:latest
+        ports:
+        - containerPort: 8080
+```
+
+### 単一ファイルテンプレート（従来）
+
+./.yg/_templates/deployment.yaml
 
 ```yaml
 path: {{.Questions.env}}/{{.Questions.cluster}}/deployment

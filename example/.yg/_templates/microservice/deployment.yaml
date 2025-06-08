@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}
+  labels:
+    app: {{.Questions.appName}}
+    env: {{.Questions.env}}
+    cluster: {{.Questions.cluster}}
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{.Questions.appName}}
+  template:
+    metadata:
+      labels:
+        app: {{.Questions.appName}}
+    spec:
+      containers:
+      - name: {{.Questions.appName}}
+        image: {{.Questions.appName}}:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENV
+          value: {{.Questions.env}}
+        - name: CLUSTER
+          value: {{.Questions.cluster}}

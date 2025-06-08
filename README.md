@@ -11,6 +11,8 @@ YAML template generator - A CLI tool to generate YAML files from templates based
 - **Multi-output**: Generate files for multiple environments and clusters
 - **CLI Options**: Skip prompts with command-line flags
 - **Signal Handling**: Graceful shutdown with Ctrl+C
+- **Directory Templates**: Support for multi-file template directories 🆕
+- **File Templates**: Traditional single-file template support (backward compatible)
 
 ## Installation
 
@@ -76,20 +78,42 @@ yg --app job --name batch-job --env production --cluster prod-cluster-1 --yes
 ```console
 .yg/
 └── _templates/
-    ├── .yg-config.yaml    # Question configuration
-    ├── deployment.yaml    # Deployment template
-    └── job.yaml          # Job template
+    ├── .yg-config.yaml      # Question and template configuration
+    ├── deployment.yaml      # Single file template
+    ├── job.yaml            # Single file template
+    └── microservice/       # Directory template (new feature)
+        ├── .template-config.yaml
+        ├── deployment.yaml
+        ├── service.yaml
+        ├── configmap.yaml
+        └── ingress.yaml
 ```
 
 ### Configuration File (`.yg-config.yaml`)
 
+The configuration file supports both file and directory templates:
+
 ```yaml
+# Template definitions (new feature)
+templates:
+  microservice:
+    type: directory      # Directory template with multiple files
+    path: microservice
+  deployment:
+    type: file          # Single file template (traditional)
+    path: deployment.yaml
+  job:
+    type: file
+    path: job.yaml
+
+# Question configuration
 questions:
   app:
     prompt: "アプリの種類はなんですか？"
     choices:
-      - deployment
-      - job
+      - microservice   # Directory template
+      - deployment    # File template
+      - job          # File template
   appName:
     prompt: "アプリ名は何ですか？"
     type:
@@ -97,6 +121,9 @@ questions:
         dependency_questions: ["app"]
       interactive: true
     choices:
+      microservice:
+        - sample-api-1
+        - sample-api-2
       deployment:
         - sample-server-1
         - sample-server-2
@@ -128,6 +155,8 @@ questions:
 
 ### Template Files
 
+#### Single File Templates (Traditional)
+
 Templates use Go template syntax and have metadata headers:
 
 ```yaml
@@ -143,9 +172,33 @@ spec:
   # ... template content
 ```
 
+#### Directory Templates (New Feature)
+
+Directory templates consist of multiple files with shared configuration:
+
+**`.template-config.yaml`**:
+```yaml
+output:
+  base_path: "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}"
+
+files:
+  deployment.yaml:
+    filename: "{{.Questions.appName}}-deployment.yaml"
+  service.yaml:
+    filename: "{{.Questions.appName}}-service.yaml"
+  configmap.yaml:
+    filename: "{{.Questions.appName}}-configmap.yaml"
+  ingress.yaml:
+    filename: "{{.Questions.appName}}-ingress.yaml"
+```
+
+Each file in the directory is a regular Go template without metadata headers.
+
 ## Examples
 
-### Example Output
+### Example Outputs
+
+#### Single File Template Output
 
 Running `yg --app deployment --name my-app --env dev --cluster dev-cluster-1 --yes` generates:
 
@@ -184,6 +237,18 @@ spec:
         - name: CLUSTER
           value: dev-cluster-1
 ```
+
+#### Directory Template Output
+
+Running `yg --app microservice --name my-api --env dev --cluster dev-cluster-1 --yes` generates multiple files:
+
+**Files**: 
+- `dev/dev-cluster-1/my-api/my-api-deployment.yaml`
+- `dev/dev-cluster-1/my-api/my-api-service.yaml`
+- `dev/dev-cluster-1/my-api/my-api-configmap.yaml`
+- `dev/dev-cluster-1/my-api/my-api-ingress.yaml`
+
+This allows you to generate complete microservice manifests in one command.
 
 ## Development
 

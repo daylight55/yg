@@ -1,7 +1,25 @@
+templates:
+  microservice:
+    type: directory
+    path: microservice
+  deployment:
+    type: file
+    path: deployment.yaml
+  job:
+    type: file
+    path: job.yaml
+
 questions:
-  app:
+  order:
+    - app
+    - appName
+    - env
+    - cluster
+  definitions:
+    app:
     prompt: 'アプリの種類はなんですか？'
     choices:
+      - microservice
       - deployment
       - job
   appName:
@@ -11,6 +29,10 @@ questions:
         dependency_questions: ['app']
       interactive: true
     choices:
+      microservice:
+        - sample-api-1
+        - sample-api-2
+        - sample-api-3
       deployment:
         - sample-server-1
         - sample-server-2
