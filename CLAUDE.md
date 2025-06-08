@@ -5,7 +5,8 @@
 ## Claude Rule
 
 - 日本語で回答して
-- 修正後にREADME.md/CLAUDE,mdを修正して
+- 修正後にREADME.md/CLAUDE.mdを修正して
+- 修正後にテストと凛とを実行して成功するか確認して、失敗したら修正して。
 - 最後にGitコミットを実行して、GitHubにpushして。
 
 ## Guidelines
@@ -163,15 +164,16 @@ questions:
           - sample-job-5
     env:
       prompt: "環境名はなんですか？"
-      multiple: true  # 複数選択可能
+      type:
+        multiple: true  # 複数選択可能
       choices:
         - dev
         - staging
         - production
     cluster:
       prompt: "クラスターはどこですか？"
-      multiple: true  # 複数選択可能
       type:
+        multiple: true  # 複数選択可能
         dynamic:
           dependency_questions: ["env"] # 依存する回答を指定
       choices:
@@ -218,7 +220,8 @@ questions:
           - choice-4
     target-env:
       prompt: "対象環境は？"
-      multiple: true
+      type:
+        multiple: true
       choices:
         - development
         - staging
@@ -235,6 +238,8 @@ questions:
     choices: ["deployment", "job"]
   env:
     prompt: "環境は？"
+    type:
+      multiple: true
     choices: ["dev", "prod"]
 ```
 

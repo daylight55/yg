@@ -170,7 +170,7 @@ func (g *Generator) determineTemplateAndMultiValues() (string, map[string][]stri
 		}
 
 		answer := g.answers[questionKey]
-		if question.Multiple {
+		if question.IsMultiple() {
 			// This is a multi-value question
 			if strSlice, ok := answer.([]string); ok {
 				multiValueQuestions[questionKey] = strSlice
@@ -247,7 +247,7 @@ func (g *Generator) askQuestion(_ string, question config.Question) (interface{}
 		return nil, fmt.Errorf("failed to get choices: %w", err)
 	}
 
-	if question.Multiple {
+	if question.IsMultiple() {
 		return g.prompter.MultiSelect(question.Prompt, choices)
 	}
 

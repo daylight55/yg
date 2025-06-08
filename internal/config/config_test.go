@@ -29,7 +29,8 @@ func TestLoadConfig(t *testing.T) {
         - job
     env:
       prompt: "環境名はなんですか？"
-      multiple: true
+      type:
+        multiple: true
       choices:
         - dev
         - staging
@@ -63,7 +64,8 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
 	}
 
-	if !questions["env"].Multiple {
+	envQuestion := questions["env"]
+	if !envQuestion.IsMultiple() {
 		t.Error("Expected env question to be multiple choice")
 	}
 
@@ -97,7 +99,8 @@ func TestLoadConfigBackwardCompatibility(t *testing.T) {
       - job
   env:
     prompt: "環境名はなんですか？"
-    multiple: true
+    type:
+      multiple: true
     choices:
       - dev
       - staging
@@ -128,7 +131,8 @@ func TestLoadConfigBackwardCompatibility(t *testing.T) {
 		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
 	}
 
-	if !questions["env"].Multiple {
+	envQuestion := questions["env"]
+	if !envQuestion.IsMultiple() {
 		t.Error("Expected env question to be multiple choice")
 	}
 
@@ -478,6 +482,152 @@ func TestQuestionGetChoicesInvalidStructure(t *testing.T) {
 	_, err := question.GetChoices(answers)
 	if err == nil {
 		t.Error("Expected error for invalid choices structure")
+	}
+}
+
+func TestQuestionGetChoicesMultipleDependencies(t *testing.T) {
+	// Test multiple environment selection affecting cluster choices
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"env"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"dev":        []interface{}{"dev-cluster-1", "dev-cluster-2"},
+			"staging":    []interface{}{"staging-cluster-1", "staging-cluster-2"},
+			"production": []interface{}{"production-cluster-1"},
+		},
+	}
+
+	// Test single environment selection
+	answers := map[string]interface{}{
+		"env": "dev",
+	}
+
+	choices, err := question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices: %v", err)
+	}
+
+	expected := []string{"dev-cluster-1", "dev-cluster-2"}
+	if len(choices) != len(expected) {
+		t.Errorf("Expected %d choices, got %d", len(expected), len(choices))
+	}
+
+	// Test multiple environment selection
+	answers = map[string]interface{}{
+		"env": []string{"dev", "staging"},
+	}
+
+	choices, err = question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices for multiple environments: %v", err)
+	}
+
+	// Should get combined choices from both environments (no duplicates)
+	expectedMultiple := []string{"dev-cluster-1", "dev-cluster-2", "staging-cluster-1", "staging-cluster-2"}
+	if len(choices) != len(expectedMultiple) {
+		t.Errorf("Expected %d choices for multiple envs, got %d", len(expectedMultiple), len(choices))
+	}
+
+	// Verify all expected choices are present
+	choiceMap := make(map[string]bool)
+	for _, choice := range choices {
+		choiceMap[choice] = true
+	}
+	for _, expected := range expectedMultiple {
+		if !choiceMap[expected] {
+			t.Errorf("Expected choice %s not found in results", expected)
+		}
+	}
+}
+
+func TestQuestionGetChoicesArbitraryKeyDependency(t *testing.T) {
+	// Test arbitrary key dependency (not just env/cluster)
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"service-type"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"web":      []interface{}{"nginx", "apache", "caddy"},
+			"database": []interface{}{"mysql", "postgresql", "mongodb"},
+			"cache":    []interface{}{"redis", "memcached"},
+		},
+	}
+
+	// Test single service type
+	answers := map[string]interface{}{
+		"service-type": "web",
+	}
+
+	choices, err := question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices: %v", err)
+	}
+
+	expected := []string{"nginx", "apache", "caddy"}
+	if len(choices) != len(expected) {
+		t.Errorf("Expected %d choices, got %d", len(expected), len(choices))
+	}
+
+	// Test multiple service types
+	answers = map[string]interface{}{
+		"service-type": []string{"database", "cache"},
+	}
+
+	choices, err = question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices for multiple service types: %v", err)
+	}
+
+	expectedMultiple := []string{"mysql", "postgresql", "mongodb", "redis", "memcached"}
+	if len(choices) != len(expectedMultiple) {
+		t.Errorf("Expected %d choices for multiple service types, got %d", len(expectedMultiple), len(choices))
+	}
+}
+
+func TestQuestionGetChoicesNestedDependency(t *testing.T) {
+	// Test multi-level dependency: region -> env -> cluster
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"region", "env"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"us-east": map[string]interface{}{
+				"dev":  []interface{}{"us-east-dev-1", "us-east-dev-2"},
+				"prod": []interface{}{"us-east-prod-1"},
+			},
+			"us-west": map[string]interface{}{
+				"dev":  []interface{}{"us-west-dev-1"},
+				"prod": []interface{}{"us-west-prod-1", "us-west-prod-2"},
+			},
+		},
+	}
+
+	answers := map[string]interface{}{
+		"region": "us-east",
+		"env":    "dev",
+	}
+
+	choices, err := question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices: %v", err)
+	}
+
+	expected := []string{"us-east-dev-1", "us-east-dev-2"}
+	if len(choices) != len(expected) {
+		t.Errorf("Expected %d choices, got %d", len(expected), len(choices))
+	}
+
+	for i, choice := range choices {
+		if choice != expected[i] {
+			t.Errorf("Expected choice %s, got %s", expected[i], choice)
+		}
 	}
 }
 

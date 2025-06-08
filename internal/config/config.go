@@ -24,21 +24,26 @@ type Questions struct {
 
 // Question represents a single question configuration.
 type Question struct {
-	Prompt   string        `yaml:"prompt"`
-	Type     *QuestionType `yaml:"type,omitempty"`
-	Choices  interface{}   `yaml:"choices"`
-	Multiple bool          `yaml:"multiple,omitempty"`
+	Prompt  string        `yaml:"prompt"`
+	Type    *QuestionType `yaml:"type,omitempty"`
+	Choices interface{}   `yaml:"choices"`
 }
 
 // QuestionType defines the type of question.
 type QuestionType struct {
 	Dynamic     *DynamicType `yaml:"dynamic,omitempty"`
 	Interactive bool         `yaml:"interactive,omitempty"`
+	Multiple    bool         `yaml:"multiple,omitempty"`
 }
 
 // DynamicType defines dynamic question dependencies.
 type DynamicType struct {
 	DependencyQuestions []string `yaml:"dependency_questions"`
+}
+
+// IsMultiple returns whether the question supports multiple selections.
+func (q *Question) IsMultiple() bool {
+	return q.Type != nil && q.Type.Multiple
 }
 
 // LoadConfig loads the configuration from .yg-config.yaml file.
@@ -118,83 +123,115 @@ func (q *Question) GetChoices(answers map[string]interface{}) ([]string, error) 
 }
 
 func (q *Question) resolveDynamicChoices(choices, answers map[string]interface{}) ([]string, error) {
-	// Special handling for cluster question based on selected environments
-	if q.Type != nil && q.Type.Dynamic != nil {
-		for _, dep := range q.Type.Dynamic.DependencyQuestions {
-			if dep == "env" {
-				// Handle multiple environment selection for cluster choices
-				envAnswer, exists := answers["env"]
+	if q.Type == nil || q.Type.Dynamic == nil {
+		return nil, fmt.Errorf("dynamic type configuration missing")
+	}
+
+	var current interface{} = choices
+
+	// Process each dependency question in order
+	for _, dep := range q.Type.Dynamic.DependencyQuestions {
+		answer, exists := answers[dep]
+		if !exists {
+			return nil, fmt.Errorf("dependency answer for %s not found", dep)
+		}
+
+		// Handle both single and multiple selections
+		var answerValues []string
+		switch answerValue := answer.(type) {
+		case []string:
+			answerValues = answerValue
+		case string:
+			answerValues = []string{answerValue}
+		case []interface{}:
+			for _, v := range answerValue {
+				answerValues = append(answerValues, fmt.Sprintf("%v", v))
+			}
+		default:
+			answerValues = []string{fmt.Sprintf("%v", answer)}
+		}
+
+		// If multiple values are provided, collect choices from all values
+		if len(answerValues) > 1 {
+			allChoices := make(map[string]bool) // To avoid duplicates
+			var result []string
+
+			for _, answerStr := range answerValues {
+				currentMap, ok := current.(map[string]interface{})
+				if !ok {
+					return nil, fmt.Errorf("expected map for dependency lookup, got %T", current)
+				}
+				next, exists := currentMap[answerStr]
 				if !exists {
-					return nil, fmt.Errorf("dependency answer for env not found")
+					continue // Skip missing choices
 				}
 
-				var envs []string
-				switch envValue := envAnswer.(type) {
-				case []string:
-					envs = envValue
-				case string:
-					envs = []string{envValue}
-				default:
-					return nil, fmt.Errorf("invalid env answer type: %T", envValue)
-				}
-
-				// Collect all cluster choices from selected environments
-				var allClusters []string
-				clusterMap := make(map[string]bool) // To avoid duplicates
-
-				for _, env := range envs {
-					envChoices, exists := choices[env]
-					if !exists {
-						continue
+				switch nextValue := next.(type) {
+				case []interface{}:
+					// Direct choice list
+					for _, choice := range nextValue {
+						choiceStr := fmt.Sprintf("%v", choice)
+						if !allChoices[choiceStr] {
+							result = append(result, choiceStr)
+							allChoices[choiceStr] = true
+						}
 					}
-					clusterList, ok := envChoices.([]interface{})
-					if !ok {
-						continue
-					}
-					for _, cluster := range clusterList {
-						clusterStr := fmt.Sprintf("%v", cluster)
-						if !clusterMap[clusterStr] {
-							allClusters = append(allClusters, clusterStr)
-							clusterMap[clusterStr] = true
+				case map[string]interface{}:
+					// Nested structure - collect all choices from nested maps
+					for _, subChoices := range nextValue {
+						if choiceList, ok := subChoices.([]interface{}); ok {
+							for _, choice := range choiceList {
+								choiceStr := fmt.Sprintf("%v", choice)
+								if !allChoices[choiceStr] {
+									result = append(result, choiceStr)
+									allChoices[choiceStr] = true
+								}
+							}
 						}
 					}
 				}
-
-				return allClusters, nil
 			}
+
+			return result, nil
+		}
+
+		// Single value - navigate to next level
+		answerStr := answerValues[0]
+		currentMap, ok := current.(map[string]interface{})
+		if !ok {
+			return nil, fmt.Errorf("expected map for dependency lookup, got %T", current)
+		}
+		next, exists := currentMap[answerStr]
+		if !exists {
+			return nil, fmt.Errorf("no choices found for %s = %s", dep, answerStr)
+		}
+
+		switch nextValue := next.(type) {
+		case map[string]interface{}:
+			current = nextValue
+		case []interface{}:
+			result := make([]string, len(nextValue))
+			for i, choice := range nextValue {
+				result[i] = fmt.Sprintf("%v", choice)
+			}
+			return result, nil
+		default:
+			return nil, fmt.Errorf("invalid next value type: %T", nextValue)
 		}
 	}
 
-	// Handle other dynamic dependencies
-	current := choices
-
-	if q.Type != nil && q.Type.Dynamic != nil {
-		for _, dep := range q.Type.Dynamic.DependencyQuestions {
-			answer, exists := answers[dep]
-			if !exists {
-				return nil, fmt.Errorf("dependency answer for %s not found", dep)
-			}
-
-			answerStr := fmt.Sprintf("%v", answer)
-			next, exists := current[answerStr]
-			if !exists {
-				return nil, fmt.Errorf("no choices found for %s = %s", dep, answerStr)
-			}
-
-			switch nextValue := next.(type) {
-			case map[string]interface{}:
-				current = nextValue
-			case []interface{}:
-				result := make([]string, len(nextValue))
-				for i, choice := range nextValue {
-					result[i] = fmt.Sprintf("%v", choice)
-				}
-				return result, nil
-			default:
-				return nil, fmt.Errorf("invalid choices structure at %s", dep)
-			}
+	// If we reach here, current should be a final choice list
+	switch finalChoices := current.(type) {
+	case []interface{}:
+		result := make([]string, len(finalChoices))
+		for i, choice := range finalChoices {
+			result[i] = fmt.Sprintf("%v", choice)
 		}
+		return result, nil
+	case map[string]interface{}:
+		// If we have a map, it means we didn't process all dependencies
+		return nil, fmt.Errorf("incomplete dependency resolution, remaining structure: %T", finalChoices)
+	default:
+		return nil, fmt.Errorf("final choices must be an array, got %T", finalChoices)
 	}
-
-	return nil, fmt.Errorf("unable to resolve choices")
 }

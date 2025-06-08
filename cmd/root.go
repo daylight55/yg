@@ -32,7 +32,7 @@ var rootCmd = &cobra.Command{
 
 		for questionKey, question := range questions {
 			if answerStr, exists := answers[questionKey]; exists {
-				if question.Multiple {
+				if question.IsMultiple() {
 					// Split comma-separated values for multi-select questions
 					generatorAnswers[questionKey] = strings.Split(answerStr, ",")
 				} else {

@@ -3,6 +3,7 @@ package generator
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -101,22 +102,26 @@ func setupTestEnvironment(t *testing.T) string {
           - sample-job-2
     env:
       prompt: "環境名はなんですか？"
-      multiple: true
+      type:
+        multiple: true
       choices:
         - dev
         - staging
     cluster:
       prompt: "クラスターはどこですか？"
-      multiple: true
       type:
+        multiple: true
         dynamic:
           dependency_questions: ["env"]
       choices:
         dev:
           - dev-cluster-1
           - dev-cluster-2
+          - dev-cluster-3
         staging:
-          - staging-cluster-1`
+          - staging-cluster-1
+          - staging-cluster-2
+          - staging-cluster-3`
 
 	err = os.WriteFile(configFile, []byte(configContent), 0644)
 	if err != nil {
@@ -318,10 +323,10 @@ func TestRun(t *testing.T) {
 	// Mock the prompter for interactive flow
 	// Order: app (select) -> appName (search) -> env (multiselect) -> cluster (multiselect) -> confirm
 	mockPrompter := &MockPrompter{
-		selectResults:      []string{testAppTypeDeployment},        // app selection
-		searchResults:      []string{"sample-server-1"},            // appName search
-		multiSelectResults: [][]string{{"dev"}, {"dev-cluster-1"}}, // env, then cluster
-		confirmResults:     []bool{true},                           // final confirmation
+		selectResults:      []string{testAppTypeDeployment},                         // app selection
+		searchResults:      []string{"sample-server-1"},                             // appName search
+		multiSelectResults: [][]string{{"dev"}, {"dev-cluster-1", "dev-cluster-2"}}, // env, then cluster
+		confirmResults:     []bool{true},                                            // final confirmation
 	}
 	generator.prompter = mockPrompter
 
@@ -565,5 +570,84 @@ func TestRunWithOptionsPrefilledAnswers(t *testing.T) {
 	// Check that pre-filled answers were used
 	if generator.answers["app"] != testAppTypeDeployment {
 		t.Errorf("Expected app='%s', got %v", testAppTypeDeployment, generator.answers["app"])
+	}
+}
+
+func TestDynamicChoicesInRun(t *testing.T) {
+	tempDir := setupTestEnvironment(t)
+	defer func() { _ = os.Chdir(tempDir) }()
+
+	// Change to temp directory before creating generator
+	err := os.Chdir(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to change directory: %v", err)
+	}
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Set up answers simulating dynamic choice selection
+	// First select multiple environments, then verify cluster choices are combined
+	generator.answers = map[string]interface{}{
+		"app": testAppTypeDeployment,
+		"env": []string{"dev", "staging"}, // Multiple environments
+	}
+
+	// Mock the prompter to simulate user selections
+	mockPrompter := &MockPrompter{
+		selectResults: []string{testAppTypeDeployment}, // app selection
+		searchResults: []string{"dynamic-app"},         // appName search
+		multiSelectResults: [][]string{
+			{"dev", "staging"}, // env multiselect
+			{"dev-cluster-1", "dev-cluster-2", "staging-cluster-1"}, // cluster multiselect (combined from multiple envs)
+		},
+		confirmResults: []bool{true}, // final confirmation
+	}
+	generator.prompter = mockPrompter
+
+	// Test getting dynamic choices for cluster question
+	questions := generator.config.Questions.GetQuestions()
+	clusterQuestion, exists := questions["cluster"]
+	if !exists {
+		t.Fatal("cluster question should exist in config")
+	}
+
+	choices, err := clusterQuestion.GetChoices(generator.answers)
+	if err != nil {
+		t.Fatalf("Failed to get dynamic choices: %v", err)
+	}
+
+	// Should get choices from both dev and staging environments
+	expectedChoices := []string{"dev-cluster-1", "dev-cluster-2", "dev-cluster-3", "staging-cluster-1", "staging-cluster-2", "staging-cluster-3"}
+	if len(choices) < 3 { // At least dev choices should be present
+		t.Errorf("Expected at least 3 dynamic choices, got %d: %v", len(choices), choices)
+	}
+
+	// Verify that choices contain expected values from both environments
+	choiceMap := make(map[string]bool)
+	for _, choice := range choices {
+		choiceMap[choice] = true
+	}
+
+	devChoicesFound := 0
+	stagingChoicesFound := 0
+	for _, choice := range expectedChoices {
+		if choiceMap[choice] {
+			if strings.Contains(choice, "dev") {
+				devChoicesFound++
+			}
+			if strings.Contains(choice, "staging") {
+				stagingChoicesFound++
+			}
+		}
+	}
+
+	if devChoicesFound == 0 {
+		t.Error("No dev cluster choices found in dynamic selection")
+	}
+	if stagingChoicesFound == 0 {
+		t.Error("No staging cluster choices found in dynamic selection")
 	}
 }
