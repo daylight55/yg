@@ -1,12 +1,12 @@
 output:
-  base_path: "{{.Questions.environment}}/{{.Questions.target}}/{{.Questions.name}}"
+  base_path: '{{.Questions.environment}}/{{.Questions.target}}/{{.Questions.name}}'
 
 files:
   server-config.yaml:
-    filename: "{{.Questions.name}}-server.yaml"
+    filename: '{{.Questions.name}}-server.yaml.tpl'
   database-config.yaml:
-    filename: "{{.Questions.name}}-database.yaml"
+    filename: '{{.Questions.name}}-database.yaml.tpl'
   api-spec.yaml:
-    filename: "{{.Questions.name}}-api.yaml"
+    filename: '{{.Questions.name}}-api.yaml.tpl'
   monitoring-config.yaml:
-    filename: "{{.Questions.name}}-monitoring.yaml"
+    filename: '{{.Questions.name}}-monitoring.yaml.tpl'

@@ -7,7 +7,7 @@ templates:
     path: configuration.yaml
   batch-job:
     type: file
-    path: batch-job.yaml
+    path: batch-job.json
 
 questions:
   template_question: templateType
