@@ -106,12 +106,12 @@ func setupTestEnvironment(t *testing.T) string {
     - cluster
   definitions:
     app:
-      prompt: "アプリの種類はなんですか？"
+      prompt: "What type of template do you want to use?"
       choices:
         - deployment
         - job
     appName:
-      prompt: "アプリ名は何ですか？"
+      prompt: "What is the name of your item?"
       type:
         dynamic:
           dependency_questions: ["app"]
@@ -124,14 +124,14 @@ func setupTestEnvironment(t *testing.T) string {
           - sample-job-1
           - sample-job-2
     env:
-      prompt: "環境名はなんですか？"
+      prompt: "Which environment do you want to target?"
       type:
         multiple: true
       choices:
         - dev
         - staging
     cluster:
-      prompt: "クラスターはどこですか？"
+      prompt: "Which target destinations do you want to deploy to?"
       type:
         multiple: true
         dynamic:
@@ -682,13 +682,13 @@ func setupTestEnvironmentWithTemplateQuestion(t *testing.T) string {
     - cluster
   definitions:
     appType:
-      prompt: "アプリケーションタイプを選択してください"
+      prompt: "Select application type"
       choices:
         - deployment
         - job
         - microservice
     appName:
-      prompt: "アプリ名は何ですか？"
+      prompt: "What is the name of your item?"
       type:
         interactive: true
       choices:
@@ -696,7 +696,7 @@ func setupTestEnvironmentWithTemplateQuestion(t *testing.T) string {
         - sample-app-2
         - sample-service-1
     env:
-      prompt: "環境名はなんですか？"
+      prompt: "Which environment do you want to target?"
       type:
         multiple: true
       choices:
@@ -704,7 +704,7 @@ func setupTestEnvironmentWithTemplateQuestion(t *testing.T) string {
         - staging
         - production
     cluster:
-      prompt: "クラスターはどこですか？"
+      prompt: "Which target destinations do you want to deploy to?"
       type:
         multiple: true
         dynamic:

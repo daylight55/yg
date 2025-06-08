@@ -62,7 +62,7 @@ func (p *Prompter) Search(message string, options []string) (string, error) {
 	var result string
 
 	prompt := &survey.Select{
-		Message: message + " (入力で検索、↓↑で選択):",
+		Message: message + " (type to search, ↓↑ to select):",
 		Options: options,
 		Filter: func(filterValue string, optionValue string, _ int) bool {
 			// If no filter input, show all options

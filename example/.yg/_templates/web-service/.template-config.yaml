@@ -1,0 +1,12 @@
+output:
+  base_path: '{{.Questions.environment}}/{{.Questions.target}}/{{.Questions.name}}'
+
+files:
+  server-config.yaml.tpl:
+    filename: '{{.Questions.name}}-server.yaml'
+  database-config.yaml.tpl:
+    filename: '{{.Questions.name}}-database.yaml'
+  api-spec.yaml.tpl:
+    filename: '{{.Questions.name}}-api.yaml'
+  monitoring-config.yaml.tpl:
+    filename: '{{.Questions.name}}-monitoring.yaml'

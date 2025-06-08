@@ -122,7 +122,7 @@ func (g *Generator) RunWithOptions(options *Options) error {
 
 	// Confirm generation (skip if using --yes flag)
 	if !options.SkipPrompt {
-		confirmed, err := g.prompter.Confirm("出力して問題ないですか?")
+		confirmed, err := g.prompter.Confirm("Do you want to proceed with file generation?")
 		if err != nil {
 			return fmt.Errorf("failed to get confirmation: %w", err)
 		}

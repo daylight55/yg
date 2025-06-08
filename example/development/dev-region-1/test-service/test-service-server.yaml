@@ -1,0 +1,36 @@
+# Server configuration for test-service
+name: test-service
+environment: development
+target: dev-region-1
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8080
+  protocol: http
+  ssl:
+    enabled: false
+    cert_file: "/etc/ssl/test-service.crt"
+    key_file: "/etc/ssl/test-service.key"
+
+# Performance settings
+performance:
+  max_connections: 100
+  timeout: 30s
+  keep_alive: true
+  workers: 2
+
+# Security
+security:
+  cors:
+    enabled: true
+    origins: ["development.test-service.com"]
+  rate_limiting:
+    enabled: false
+    requests_per_minute: 60
+
+# Monitoring
+monitoring:
+  health_check_path: "/health"
+  metrics_path: "/metrics"
+  log_level: debug

@@ -7,16 +7,16 @@ import (
 )
 
 const (
-	testAppPrompt     = "アプリの種類はなんですか？"
+	testAppPrompt     = "What type of template do you want to use?"
 	testConfigContent = `questions:
   definitions:
     app:
-      prompt: "アプリの種類はなんですか？"
+      prompt: "What type of template do you want to use?"
       choices:
         - deployment
         - job
     env:
-      prompt: "環境名はなんですか？"
+      prompt: "Which environment do you want to target?"
       type:
         multiple: true
       choices:
@@ -95,7 +95,7 @@ func TestLoadConfigNewPath(t *testing.T) {
 	configContent := `questions:
   definitions:
     app:
-      prompt: "アプリの種類はなんですか？"
+      prompt: "What type of template do you want to use?"
       choices:
         - deployment
         - job
@@ -177,12 +177,12 @@ func TestLoadConfigBackwardCompatibility(t *testing.T) {
 	configFile := filepath.Join(configDir, ".yg-config.yaml")
 	configContent := `questions:
   app:
-    prompt: "アプリの種類はなんですか？"
+    prompt: "What type of template do you want to use?"
     choices:
       - deployment
       - job
   env:
-    prompt: "環境名はなんですか？"
+    prompt: "Which environment do you want to target?"
     type:
       multiple: true
     choices:
@@ -769,18 +769,18 @@ func TestLoadConfigWithTemplateQuestion(t *testing.T) {
   template_question: "app"
   definitions:
     app:
-      prompt: "アプリの種類はなんですか？"
+      prompt: "What type of template do you want to use?"
       choices:
         - deployment
         - job
         - microservice
     appName:
-      prompt: "アプリ名は何ですか？"
+      prompt: "What is the name of your item?"
       choices:
         - sample-app-1
         - sample-app-2
     env:
-      prompt: "環境名はなんですか？"
+      prompt: "Which environment do you want to target?"
       type:
         multiple: true
       choices:
