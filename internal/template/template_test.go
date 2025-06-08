@@ -101,7 +101,7 @@ content without separator`
 
 func TestTemplateRender(t *testing.T) {
 	tmpl := &Template{
-		Type:     TemplateTypeFile,
+		Type:     TypeFile,
 		Path:     "{{.Questions.env}}/{{.Questions.cluster}}/deployment",
 		Filename: "{{.Questions.appName}}-deployment.yaml",
 		Content: `apiVersion: apps/v1
@@ -152,7 +152,7 @@ spec:
 
 func TestTemplateRenderInvalidTemplate(t *testing.T) {
 	tmpl := &Template{
-		Type:     TemplateTypeFile,
+		Type:     TypeFile,
 		Path:     "{{.InvalidField}}",
 		Filename: "test.yaml",
 		Content:  "content",
@@ -180,8 +180,14 @@ func TestLoadDirectoryTemplate(t *testing.T) {
 
 	// Change to test directory
 	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
-	os.Chdir(testDir)
+	defer func() {
+		if err := os.Chdir(originalDir); err != nil {
+			t.Errorf("Failed to change back to original directory: %v", err)
+		}
+	}()
+	if err := os.Chdir(testDir); err != nil {
+		t.Fatalf("Failed to change to test directory: %v", err)
+	}
 
 	// Create directory template config
 	configContent := `output:
@@ -225,7 +231,7 @@ metadata:
 		t.Fatalf("Failed to load directory template: %v", err)
 	}
 
-	if tmpl.Type != TemplateTypeDirectory {
+	if tmpl.Type != TypeDirectory {
 		t.Errorf("Expected template type to be directory, got %s", tmpl.Type)
 	}
 
@@ -241,7 +247,7 @@ metadata:
 
 func TestRenderDirectory(t *testing.T) {
 	tmpl := &Template{
-		Type:     TemplateTypeDirectory,
+		Type:     TypeDirectory,
 		BasePath: "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}",
 		Files: map[string]*FileTemplate{
 			"deployment.yaml": {

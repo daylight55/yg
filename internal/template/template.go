@@ -11,20 +11,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TemplateType defines the type of template.
-type TemplateType string
+// Type defines the type of template.
+type Type string
 
 const (
-	TemplateTypeFile      TemplateType = "file"
-	TemplateTypeDirectory TemplateType = "directory"
+	TypeFile      Type = "file"
+	TypeDirectory Type = "directory"
 )
 
 // Template represents a YAML template.
 type Template struct {
-	Type     TemplateType // "file" or "directory"
-	Path     string       // For file: template file path, For directory: base path template
-	Filename string       // For file: filename template
-	Content  string       // For file: content template
+	Type     Type   // "file" or "directory"
+	Path     string // For file: template file path, For directory: base path template
+	Filename string // For file: filename template
+	Content  string // For file: content template
 
 	// For directory templates
 	Files    map[string]*FileTemplate // filename -> FileTemplate
@@ -40,7 +40,7 @@ type FileTemplate struct {
 
 // DirectoryTemplateConfig represents the config for directory templates.
 type DirectoryTemplateConfig struct {
-	Output OutputConfig                    `yaml:"output"`
+	Output OutputConfig                  `yaml:"output"`
 	Files  map[string]FileTemplateConfig `yaml:"files"`
 }
 
@@ -86,7 +86,7 @@ func LoadTemplate(templateType string) (*Template, error) {
 }
 
 // loadTemplateConfig loads the template configuration from config file.
-func loadTemplateConfig() (*TemplateConfigFile, error) {
+func loadTemplateConfig() (*ConfigFile, error) {
 	configPath := filepath.Join(".yg", "_templates", ".yg-config.yaml")
 
 	data, err := os.ReadFile(configPath)
@@ -94,7 +94,7 @@ func loadTemplateConfig() (*TemplateConfigFile, error) {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
 
-	var config TemplateConfigFile
+	var config ConfigFile
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
@@ -102,13 +102,13 @@ func loadTemplateConfig() (*TemplateConfigFile, error) {
 	return &config, nil
 }
 
-// TemplateConfigFile represents a simplified config structure for templates only.
-type TemplateConfigFile struct {
-	Templates map[string]TemplateConfigEntry `yaml:"templates"`
+// ConfigFile represents a simplified config structure for templates only.
+type ConfigFile struct {
+	Templates map[string]ConfigEntry `yaml:"templates"`
 }
 
-// TemplateConfigEntry represents template configuration entry.
-type TemplateConfigEntry struct {
+// ConfigEntry represents template configuration entry.
+type ConfigEntry struct {
 	Type string `yaml:"type"` // "file" or "directory"
 	Path string `yaml:"path"` // path to template file or directory
 }
@@ -140,7 +140,7 @@ func loadFileTemplate(templatePath string) (*Template, error) {
 
 	// Parse metadata
 	tmpl := &Template{
-		Type:    TemplateTypeFile,
+		Type:    TypeFile,
 		Content: templateContent,
 	}
 
@@ -191,7 +191,7 @@ func loadDirectoryTemplate(dirName string) (*Template, error) {
 	}
 
 	return &Template{
-		Type:     TemplateTypeDirectory,
+		Type:     TypeDirectory,
 		BasePath: config.Output.BasePath,
 		Files:    files,
 	}, nil
@@ -212,9 +212,9 @@ type RenderedFile struct {
 // Render renders the template and returns all generated files.
 func (t *Template) Render(data *Data) (*RenderResult, error) {
 	switch t.Type {
-	case TemplateTypeFile:
+	case TypeFile:
 		return t.renderSingleFile(data)
-	case TemplateTypeDirectory:
+	case TypeDirectory:
 		return t.renderDirectory(data)
 	default:
 		return nil, fmt.Errorf("unsupported template type: %s", t.Type)
