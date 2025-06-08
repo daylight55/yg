@@ -17,10 +17,7 @@ import (
 
 // Options holds CLI options for the generator.
 type Options struct {
-	AppType    string
-	AppName    string
-	Envs       []string
-	Clusters   []string
+	Answers    map[string]interface{}
 	SkipPrompt bool
 }
 
@@ -71,27 +68,21 @@ func (g *Generator) RunWithOptions(options *Options) error {
 		if err := g.validateOptions(options); err != nil {
 			return fmt.Errorf("invalid options: %w", err)
 		}
-		g.answers["app"] = options.AppType
-		g.answers["appName"] = options.AppName
-		g.answers["env"] = options.Envs
-		g.answers["cluster"] = options.Clusters
+		// Copy all provided answers
+		for key, value := range options.Answers {
+			g.answers[key] = value
+		}
 	} else {
 		// Pre-fill answers with CLI options if provided
-		if options.AppType != "" {
-			g.answers["app"] = options.AppType
-		}
-		if options.AppName != "" {
-			g.answers["appName"] = options.AppName
-		}
-		if len(options.Envs) > 0 {
-			g.answers["env"] = options.Envs
-		}
-		if len(options.Clusters) > 0 {
-			g.answers["cluster"] = options.Clusters
+		if options.Answers != nil {
+			for key, value := range options.Answers {
+				g.answers[key] = value
+			}
 		}
 
-		// Process questions in order
-		questionOrder := []string{"app", "appName", "env", "cluster"}
+		// Process questions in the order defined in config
+		questionOrder := g.config.Questions.GetOrder()
+		questions := g.config.Questions.GetQuestions()
 
 		for _, questionKey := range questionOrder {
 			select {
@@ -105,7 +96,7 @@ func (g *Generator) RunWithOptions(options *Options) error {
 				continue
 			}
 
-			question, exists := g.config.Questions[questionKey]
+			question, exists := questions[questionKey]
 			if !exists {
 				return fmt.Errorf("question %s not found in config", questionKey)
 			}
@@ -147,19 +138,107 @@ func (g *Generator) RunWithOptions(options *Options) error {
 }
 
 func (g *Generator) validateOptions(options *Options) error {
-	if options.AppType == "" {
-		return fmt.Errorf("app type is required")
+	if options.Answers == nil {
+		return fmt.Errorf("answers map is required")
 	}
-	if options.AppName == "" {
-		return fmt.Errorf("app name is required")
+
+	// Validate that all required questions have answers
+	questions := g.config.Questions.GetQuestions()
+	for questionKey := range questions {
+		if _, exists := options.Answers[questionKey]; !exists {
+			return fmt.Errorf("answer for question '%s' is required", questionKey)
+		}
 	}
-	if len(options.Envs) == 0 {
-		return fmt.Errorf("at least one environment is required")
-	}
-	if len(options.Clusters) == 0 {
-		return fmt.Errorf("at least one cluster is required")
-	}
+
 	return nil
+}
+
+// determineTemplateAndMultiValues determines which question provides the template type and which are multi-value.
+func (g *Generator) determineTemplateAndMultiValues() (string, map[string][]string, error) {
+	questions := g.config.Questions.GetQuestions()
+	multiValueQuestions := make(map[string][]string)
+	var templateType string
+
+	// Look for the first non-multi question to use as template type
+	// This is a heuristic - in the future this could be configurable
+	questionOrder := g.config.Questions.GetOrder()
+
+	for _, questionKey := range questionOrder {
+		question, exists := questions[questionKey]
+		if !exists {
+			continue
+		}
+
+		answer := g.answers[questionKey]
+		if question.IsMultiple() {
+			// This is a multi-value question
+			if strSlice, ok := answer.([]string); ok {
+				multiValueQuestions[questionKey] = strSlice
+			}
+		} else if templateType == "" {
+			// Use first single-value question as template type
+			if str, ok := answer.(string); ok {
+				templateType = str
+			}
+		}
+	}
+
+	if templateType == "" {
+		return "", nil, fmt.Errorf("no suitable template type found in answers")
+	}
+
+	return templateType, multiValueQuestions, nil
+}
+
+// generateCombinations generates all combinations of multi-value questions with single-value answers.
+func (g *Generator) generateCombinations(multiValueQuestions map[string][]string) []map[string]interface{} {
+	if len(multiValueQuestions) == 0 {
+		// No multi-value questions, return single combination with all answers
+		return []map[string]interface{}{g.copyAnswers()}
+	}
+
+	// Extract keys and values for combination generation
+	keys := make([]string, 0, len(multiValueQuestions))
+	values := make([][]string, 0, len(multiValueQuestions))
+
+	for key, vals := range multiValueQuestions {
+		keys = append(keys, key)
+		values = append(values, vals)
+	}
+
+	var combinations []map[string]interface{}
+	g.generateCombinationsRecursive(keys, values, 0, make(map[string]string), &combinations)
+
+	return combinations
+}
+
+func (g *Generator) generateCombinationsRecursive(
+	keys []string, values [][]string, index int,
+	current map[string]string, result *[]map[string]interface{},
+) {
+	if index >= len(keys) {
+		// Create a copy of the base answers and override with current combination
+		combination := g.copyAnswers()
+		for key, value := range current {
+			combination[key] = value
+		}
+		*result = append(*result, combination)
+		return
+	}
+
+	for _, value := range values[index] {
+		current[keys[index]] = value
+		g.generateCombinationsRecursive(keys, values, index+1, current, result)
+	}
+	delete(current, keys[index]) // backtrack
+}
+
+func (g *Generator) copyAnswers() map[string]interface{} {
+	result := make(map[string]interface{})
+	for key, value := range g.answers {
+		result[key] = value
+	}
+	return result
 }
 
 func (g *Generator) askQuestion(_ string, question config.Question) (interface{}, error) {
@@ -168,7 +247,7 @@ func (g *Generator) askQuestion(_ string, question config.Question) (interface{}
 		return nil, fmt.Errorf("failed to get choices: %w", err)
 	}
 
-	if question.Multiple {
+	if question.IsMultiple() {
 		return g.prompter.MultiSelect(question.Prompt, choices)
 	}
 
@@ -183,88 +262,82 @@ func (g *Generator) generatePreview() error {
 	fmt.Println("\nOutput:")
 	fmt.Println()
 
-	appType := g.answers["app"].(string)
-	appName := g.answers["appName"].(string)
-	envs := g.answers["env"].([]string)
-	clusters := g.answers["cluster"].([]string)
+	// Determine template type and multi-value questions
+	templateType, multiValueQuestions, err := g.determineTemplateAndMultiValues()
+	if err != nil {
+		return fmt.Errorf("failed to determine template and multi-values: %w", err)
+	}
 
-	tmpl, err := template.LoadTemplate(appType)
+	tmpl, err := template.LoadTemplate(templateType)
 	if err != nil {
 		return fmt.Errorf("failed to load template: %w", err)
 	}
 
-	for _, env := range envs {
-		for _, cluster := range clusters {
-			// Create template data for this combination
-			templateData := &template.Data{
-				Questions: map[string]interface{}{
-					"app":     appType,
-					"appName": appName,
-					"env":     env,
-					"cluster": cluster,
-				},
-			}
+	// Generate all combinations for multi-value questions
+	combinations := g.generateCombinations(multiValueQuestions)
 
-			path, filename, content, err := tmpl.Render(templateData)
-			if err != nil {
-				return fmt.Errorf("failed to render template: %w", err)
-			}
-
-			fullPath := filepath.Join(path, filename)
-			fmt.Printf("* %s\n\n", fullPath)
-
-			// Show the rendered content preview
-			lines := strings.Split(content, "\n")
-			for _, line := range lines {
-				if line != "" {
-					fmt.Printf("%s\n", line)
-				}
-			}
-			fmt.Println()
+	for _, combination := range combinations {
+		// Create template data for this combination
+		templateData := &template.Data{
+			Questions: combination,
 		}
+
+		path, filename, content, err := tmpl.Render(templateData)
+		if err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
+
+		fullPath := filepath.Join(path, filename)
+		fmt.Printf("* %s\n\n", fullPath)
+
+		// Show the rendered content preview
+		lines := strings.Split(content, "\n")
+		for _, line := range lines {
+			if line != "" {
+				fmt.Printf("%s\n", line)
+			}
+		}
+		fmt.Println()
 	}
 
 	return nil
 }
 
 func (g *Generator) generateFiles() error {
-	appType := g.answers["app"].(string)
-	appName := g.answers["appName"].(string)
-	envs := g.answers["env"].([]string)
-	clusters := g.answers["cluster"].([]string)
+	// Determine template type and multi-value questions
+	templateType, multiValueQuestions, err := g.determineTemplateAndMultiValues()
+	if err != nil {
+		return fmt.Errorf("failed to determine template and multi-values: %w", err)
+	}
 
-	tmpl, err := template.LoadTemplate(appType)
+	tmpl, err := template.LoadTemplate(templateType)
 	if err != nil {
 		return fmt.Errorf("failed to load template: %w", err)
 	}
 
-	for _, env := range envs {
-		for _, cluster := range clusters {
-			// Create template data for this combination
-			templateData := &template.Data{
-				Questions: map[string]interface{}{
-					"app":     appType,
-					"appName": appName,
-					"env":     env,
-					"cluster": cluster,
-				},
-			}
+	// Generate all combinations for multi-value questions
+	combinations := g.generateCombinations(multiValueQuestions)
 
-			path, filename, content, err := tmpl.Render(templateData)
-			if err != nil {
-				return fmt.Errorf("failed to render template: %w", err)
-			}
+	for _, combination := range combinations {
+		// Create template data for this combination
+		templateData := &template.Data{
+			Questions: combination,
+		}
 
-			// Create directory if it doesn't exist
-			if err := os.MkdirAll(path, 0o755); err != nil {
-				return fmt.Errorf("failed to create directory %s: %w", path, err)
-			}
+		path, filename, content, err := tmpl.Render(templateData)
+		if err != nil {
+			return fmt.Errorf("failed to render template: %w", err)
+		}
 
-			// Write file
-			fullPath := filepath.Join(path, filename)
-			if err := os.WriteFile(fullPath, []byte(content), 0o600); err != nil {
-				return fmt.Errorf("failed to write file %s: %w", fullPath, err)
-			}
+		// Create directory if it doesn't exist
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", path, err)
+		}
+
+		// Write file
+		fullPath := filepath.Join(path, filename)
+		if err := os.WriteFile(fullPath, []byte(content), 0o600); err != nil {
+			return fmt.Errorf("failed to write file %s: %w", fullPath, err)
 		}
 	}
 

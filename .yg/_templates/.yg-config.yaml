@@ -1,14 +1,14 @@
 questions:
   app:
-    prompt: "アプリの種類はなんですか？"
+    prompt: 'アプリの種類はなんですか？'
     choices:
       - deployment
       - job
   appName:
-    prompt: "アプリ名は何ですか？"
+    prompt: 'アプリ名は何ですか？'
     type:
       dynamic:
-        dependency_questions: ["app"]
+        dependency_questions: ['app']
       interactive: true
     choices:
       deployment:
@@ -24,18 +24,19 @@ questions:
         - sample-job-4
         - sample-job-5
   env:
-    prompt: "環境名はなんですか？"
-    multiple: true
+    prompt: '環境名はなんですか？'
+    type:
+      multiple: true
     choices:
       - dev
       - staging
       - production
   cluster:
-    prompt: "クラスターはどこですか？"
-    multiple: true
+    prompt: 'クラスターはどこですか？'
     type:
+      multiple: true
       dynamic:
-        dependency_questions: ["env"]
+        dependency_questions: ['env']
     choices:
       dev:
         - dev-cluster-1
