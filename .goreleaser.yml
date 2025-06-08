@@ -13,12 +13,12 @@ builds:
       - windows
       - darwin
     goarch:
-      - "386"
+      - '386'
       - amd64
       - arm64
     ignore:
       - goos: darwin
-        goarch: "386"
+        goarch: '386'
     main: ./main.go
     binary: yg
     ldflags:
@@ -34,14 +34,14 @@ archives:
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
-    - goos: windows
-      format: zip
+      - goos: windows
+        format: zip
 
 checksum:
   name_template: 'checksums.txt'
 
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: '{{ incpatch .Version }}-next'
 
 changelog:
   sort: asc
@@ -54,15 +54,4 @@ release:
   github:
     owner: daylight55
     name: yg
-  name_template: "{{.ProjectName}}-v{{.Version}}"
-
-brews:
-  - name: yg
-    repository:
-      owner: daylight55
-      name: homebrew-yg
-    homepage: "https://github.com/daylight55/yg"
-    description: "YAML template generator CLI tool"
-    license: "MIT"
-    test: |
-      system "#{bin}/yg --help"
+  name_template: '{{.ProjectName}}-v{{.Version}}'
