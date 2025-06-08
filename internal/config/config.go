@@ -50,7 +50,7 @@ func (q *Question) IsMultiple() bool {
 // If configPath is empty, it tries default paths: ./.yg/config.yaml and ./.yg/config.yml
 func LoadConfig(configPath string) (*Config, error) {
 	var paths []string
-	
+
 	if configPath != "" {
 		// Use specified config path
 		paths = []string{configPath}

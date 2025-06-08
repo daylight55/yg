@@ -11,11 +11,11 @@ import (
 )
 
 var (
-	answers                                    map[string]string
-	skipPrompt                                 bool
-	configPath                                 string
-	deprecatedApp, deprecatedName              string
-	deprecatedEnv, deprecatedCluster           []string
+	answers                          map[string]string
+	skipPrompt                       bool
+	configPath                       string
+	deprecatedApp, deprecatedName    string
+	deprecatedEnv, deprecatedCluster []string
 )
 
 var rootCmd = &cobra.Command{
