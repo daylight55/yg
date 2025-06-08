@@ -4,10 +4,10 @@ templates:
     path: web-service
   configuration:
     type: file
-    path: configuration.yaml
+    path: configuration.yaml.tpl
   batch-job:
     type: file
-    path: batch-job.json
+    path: batch-job.json.tpl
 
 questions:
   template_question: templateType

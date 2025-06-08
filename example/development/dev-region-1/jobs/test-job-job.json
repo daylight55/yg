@@ -1,0 +1,25 @@
+{
+  "name": "test-job",
+  "environment": "development",
+  "target": "dev-region-1",
+  "type": "batch-job",
+  "schedule": "0 2 * * *",
+  "timeout": "3600s",
+  "retries": 3,
+  "parameters": {
+    "input_path": "/data/development/test-job/input",
+    "output_path": "/data/development/test-job/output",
+    "batch_size": 100,
+    "parallel_workers": 2
+  },
+  "resources": {
+    "cpu": "1",
+    "memory": "2Gi",
+    "disk": "10Gi"
+  },
+  "notifications": {
+    "on_success": false,
+    "on_failure": true,
+    "channels": ["email", "slack"]
+  }
+}

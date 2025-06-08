@@ -115,8 +115,8 @@ type ConfigEntry struct {
 
 // loadFileTemplate loads a single file template.
 func loadFileTemplate(templatePath string) (*Template, error) {
-	// If templatePath doesn't end with .yaml, add it (backward compatibility)
-	if !strings.HasSuffix(templatePath, ".yaml") {
+	// If templatePath doesn't have an extension, add .yaml for backward compatibility
+	if !strings.Contains(templatePath, ".") {
 		templatePath = templatePath + ".yaml"
 	}
 

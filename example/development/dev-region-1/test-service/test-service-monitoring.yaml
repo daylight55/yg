@@ -1,0 +1,54 @@
+# Monitoring configuration for test-service
+name: test-service
+environment: development
+target: dev-region-1
+
+# Metrics collection
+metrics:
+  enabled: true
+  port: 9090
+  path: "/metrics"
+  interval: 30s
+  retention: 7d
+
+# Health checks
+health_checks:
+  liveness:
+    path: "/health/live"
+    interval: 10s
+    timeout: 5s
+    failure_threshold: 3
+  readiness:
+    path: "/health/ready"
+    interval: 5s
+    timeout: 3s
+    failure_threshold: 1
+
+# Logging
+logging:
+  level: debug
+  format: json
+  output: stdout
+  structured: true
+  fields:
+    service: test-service
+    environment: development
+    target: dev-region-1
+
+# Alerting
+alerts:
+  enabled: false
+  channels:
+    - email
+    - slack
+  thresholds:
+    error_rate: 0.05
+    response_time_p95: 2s
+    cpu_usage: 80
+    memory_usage: 85
+
+# Tracing
+tracing:
+  enabled: false
+  sample_rate: 1.0
+  endpoint: "http://jaeger.development.local:14268/api/traces"

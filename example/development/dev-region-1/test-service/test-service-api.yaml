@@ -1,0 +1,70 @@
+# API Specification for test-service
+openapi: 3.0.3
+info:
+  title: test-service API
+  description: REST API for test-service service
+  version: 1.0.0
+  contact:
+    name: test-service Team
+    email: team@test-service.com
+
+servers:
+  - url: http://test-service.development.dev-region-1.com
+    description: development environment
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  /test-service:
+    get:
+      summary: Get test-service data
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  total:
+                    type: integer
+                  environment:
+                    type: string
+                    example: development
+
+components:
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - ApiKey: []

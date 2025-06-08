@@ -16,8 +16,8 @@ filename: {{.Questions.name}}-job.json
     "parallel_workers": {{if eq .Questions.environment "production"}}4{{else}}2{{end}}
   },
   "resources": {
-    "cpu": "{{if eq .Questions.environment \"production\"}}2{{else}}1{{end}}",
-    "memory": "{{if eq .Questions.environment \"production\"}}4Gi{{else}}2Gi{{end}}",
+    "cpu": "{{if eq .Questions.environment "production"}}2{{else}}1{{end}}",
+    "memory": "{{if eq .Questions.environment "production"}}4Gi{{else}}2Gi{{end}}",
     "disk": "10Gi"
   },
   "notifications": {
