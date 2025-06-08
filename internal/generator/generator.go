@@ -30,7 +30,12 @@ type Generator struct {
 
 // New creates a new Generator instance.
 func New() (*Generator, error) {
-	cfg, err := config.LoadConfig()
+	return NewWithConfig("")
+}
+
+// NewWithConfig creates a new Generator instance with specified config path.
+func NewWithConfig(configPath string) (*Generator, error) {
+	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}

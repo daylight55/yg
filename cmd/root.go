@@ -13,6 +13,7 @@ import (
 var (
 	answers    map[string]string
 	skipPrompt bool
+	configPath string
 )
 
 var rootCmd = &cobra.Command{
@@ -21,7 +22,7 @@ var rootCmd = &cobra.Command{
 	Long:  `A CLI tool to generate YAML files from templates based on interactive prompts.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		// Load config to get available questions for validation
-		cfg, err := config.LoadConfig()
+		cfg, err := config.LoadConfig(configPath)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
@@ -56,6 +57,7 @@ func init() {
 	// For now, use StringToString flag to accept arbitrary key-value pairs
 	rootCmd.Flags().StringToStringVar(&answers, "answer", map[string]string{}, "Answers for questions in format key=value")
 	rootCmd.Flags().BoolVar(&skipPrompt, "yes", false, "Skip prompts and use provided values")
+	rootCmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to config file (default: ./.yg/config.yaml or ./.yg/config.yml)")
 
 	// Keep backward compatibility flags for common questions
 	rootCmd.Flags().StringVar(new(string), "app", "", "Application type (deprecated: use --answer app=value)")
@@ -78,10 +80,10 @@ func Execute() {
 }
 
 func runGenerator(options *generator.Options) error {
-	generator, err := generator.New()
+	gen, err := generator.NewWithConfig(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to initialize generator: %w", err)
 	}
 
-	return generator.RunWithOptions(options)
+	return gen.RunWithOptions(options)
 }

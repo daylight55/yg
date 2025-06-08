@@ -46,24 +46,47 @@ func (q *Question) IsMultiple() bool {
 	return q.Type != nil && q.Type.Multiple
 }
 
-// LoadConfig loads the configuration from .yg-config.yaml file.
-func LoadConfig() (*Config, error) {
-	configPath := filepath.Join(".yg", "_templates", ".yg-config.yaml")
-
-	data, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, err)
+// LoadConfig loads the configuration from the specified path or default locations.
+// If configPath is empty, it tries default paths: ./.yg/config.yaml and ./.yg/config.yml
+func LoadConfig(configPath string) (*Config, error) {
+	var paths []string
+	
+	if configPath != "" {
+		// Use specified config path
+		paths = []string{configPath}
+	} else {
+		// Try default paths in order
+		paths = []string{
+			filepath.Join(".yg", "config.yaml"),
+			filepath.Join(".yg", "config.yml"),
+			// Keep backward compatibility with old path
+			filepath.Join(".yg", "_templates", ".yg-config.yaml"),
+		}
 	}
 
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
+	var lastErr error
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+
+		var config Config
+		if err := yaml.Unmarshal(data, &config); err != nil {
+			return nil, fmt.Errorf("failed to parse config file %s: %w", path, err)
+		}
+
+		// Normalize the config to handle both new and old formats
+		config.Questions.normalize()
+
+		return &config, nil
 	}
 
-	// Normalize the config to handle both new and old formats
-	config.Questions.normalize()
-
-	return &config, nil
+	if configPath != "" {
+		return nil, fmt.Errorf("failed to read config file %s: %w", configPath, lastErr)
+	}
+	return nil, fmt.Errorf("no config file found in default locations (./.yg/config.yaml, ./.yg/config.yml): %w", lastErr)
 }
 
 // GetQuestions returns the questions map, handling both new and old formats.
