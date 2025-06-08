@@ -138,6 +138,11 @@ func (g *Generator) RunWithOptions(options *Options) error {
 		return fmt.Errorf("failed to generate files: %w", err)
 	}
 
+	// Show CLI example if run interactively
+	if !options.SkipPrompt {
+		g.showCLIExample()
+	}
+
 	fmt.Println("generated!")
 	return nil
 }
@@ -375,4 +380,49 @@ func (g *Generator) generateFiles() error {
 	}
 
 	return nil
+}
+
+// showCLIExample displays the CLI command equivalent of the interactive session.
+func (g *Generator) showCLIExample() {
+	fmt.Println("\nCLI Example:")
+	fmt.Print("yg --yes")
+
+	// Get question order from config
+	questionOrder := g.config.Questions.GetOrder()
+	questions := g.config.Questions.GetQuestions()
+
+	// Generate --answer options in order
+	for _, questionKey := range questionOrder {
+		answer, exists := g.answers[questionKey]
+		if !exists {
+			continue
+		}
+
+		question, questionExists := questions[questionKey]
+		if !questionExists {
+			continue
+		}
+
+		var answerStr string
+		if question.IsMultiple() {
+			// Handle multiple selection questions - join with comma
+			if strSlice, ok := answer.([]string); ok {
+				answerStr = strings.Join(strSlice, ",")
+			} else {
+				continue // Skip if not string slice
+			}
+		} else {
+			// Handle single selection questions
+			if str, ok := answer.(string); ok {
+				answerStr = str
+			} else {
+				continue // Skip if not string
+			}
+		}
+
+		fmt.Printf(" --answer %s=%s", questionKey, answerStr)
+	}
+
+	fmt.Println()
+	fmt.Println()
 }

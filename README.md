@@ -14,6 +14,7 @@ A CLI tool to generate files from templates based on interactive prompts. Create
 - **Directory Templates**: Support for multi-file template directories 🆕
 - **File Templates**: Traditional single-file template support (backward compatible)
 - **Template Question Control**: Configure which question determines template selection 🆕
+- **CLI Example Output**: Shows equivalent CLI command after interactive session 🆕
 
 ## Installation
 
@@ -53,6 +54,14 @@ This will prompt you with questions to:
 4. Choose target destinations (based on selected environments)
 5. Preview generated files
 6. Confirm generation
+7. Show CLI command example for next time 🆕
+
+After completion, yg displays the equivalent CLI command:
+
+```bash
+CLI Example:
+yg --yes --answer templateType=web-service --answer name=user-service --answer environment=development --answer target=dev-region-1
+```
 
 ### CLI Mode
 
