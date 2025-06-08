@@ -25,88 +25,83 @@ func TestPrompterInterface(t *testing.T) {
 	t.Log("Prompter methods are available")
 }
 
-// Test the search filter logic for exact match and contains search
+// Test the search filter logic used in the new Select-based implementation
 func TestSearchFilterLogic(t *testing.T) {
 	options := []string{"sample-server-1", "sample-server-2", "sample-job-1", "sample-job-2"}
 
+	// Simulate the filter function used in the new Search implementation
+	filter := func(filterValue string, optionValue string, _ int) bool {
+		// If no filter input, show all options
+		if filterValue == "" {
+			return true
+		}
+
+		// Check for exact match first (case insensitive)
+		if strings.EqualFold(filterValue, optionValue) {
+			return true
+		}
+
+		// Then check for partial match (contains, case insensitive)
+		return strings.Contains(
+			strings.ToLower(optionValue),
+			strings.ToLower(filterValue),
+		)
+	}
+
 	testCases := []struct {
-		name         string
-		input        string
-		exactMatch   string
-		filteredOpts []string
+		name     string
+		input    string
+		expected []string
 	}{
 		{
-			name:         "exact match server-1",
-			input:        "sample-server-1",
-			exactMatch:   "sample-server-1",
-			filteredOpts: []string{"sample-server-1"},
+			name:     "exact match server-1",
+			input:    "sample-server-1",
+			expected: []string{"sample-server-1"},
 		},
 		{
-			name:         "case insensitive exact match",
-			input:        "SAMPLE-SERVER-1",
-			exactMatch:   "sample-server-1",
-			filteredOpts: []string{"sample-server-1"},
+			name:     "case insensitive exact match",
+			input:    "SAMPLE-SERVER-1",
+			expected: []string{"sample-server-1"},
 		},
 		{
-			name:         "partial match server",
-			input:        "server",
-			exactMatch:   "",
-			filteredOpts: []string{"sample-server-1", "sample-server-2"},
+			name:     "partial match server",
+			input:    "server",
+			expected: []string{"sample-server-1", "sample-server-2"},
 		},
 		{
-			name:         "partial match job",
-			input:        "job",
-			exactMatch:   "",
-			filteredOpts: []string{"sample-job-1", "sample-job-2"},
+			name:     "partial match job",
+			input:    "job",
+			expected: []string{"sample-job-1", "sample-job-2"},
 		},
 		{
-			name:         "no match",
-			input:        "nonexistent",
-			exactMatch:   "",
-			filteredOpts: []string{},
+			name:     "no match",
+			input:    "nonexistent",
+			expected: []string{},
 		},
 		{
-			name:         "empty input",
-			input:        "",
-			exactMatch:   "",
-			filteredOpts: []string{},
+			name:     "empty input shows all",
+			input:    "",
+			expected: options,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Test exact match logic
-			var exactMatch string
+			var filtered []string
 			for _, option := range options {
-				if strings.EqualFold(tc.input, option) {
-					exactMatch = option
-					break
+				if filter(tc.input, option, 0) {
+					filtered = append(filtered, option)
 				}
 			}
 
-			if exactMatch != tc.exactMatch {
-				t.Errorf("Exact match: expected '%s', got '%s'", tc.exactMatch, exactMatch)
-			}
-
-			// Test contains filter logic
-			var filteredOptions []string
-			inputLower := strings.ToLower(tc.input)
-
-			for _, option := range options {
-				optionLower := strings.ToLower(option)
-				if tc.input != "" && strings.Contains(optionLower, inputLower) {
-					filteredOptions = append(filteredOptions, option)
-				}
-			}
-
-			if len(filteredOptions) != len(tc.filteredOpts) {
-				t.Errorf("Filtered options count: expected %d, got %d", len(tc.filteredOpts), len(filteredOptions))
+			if len(filtered) != len(tc.expected) {
+				t.Errorf("Filter '%s': expected %d matches, got %d", tc.input, len(tc.expected), len(filtered))
 				return
 			}
 
-			for i, expected := range tc.filteredOpts {
-				if i >= len(filteredOptions) || filteredOptions[i] != expected {
-					t.Errorf("Filtered option[%d]: expected '%s', got '%s'", i, expected, filteredOptions[i])
+			for i, expected := range tc.expected {
+				if i >= len(filtered) || filtered[i] != expected {
+					t.Errorf("Filter '%s': expected match[%d] '%s', got '%s'", tc.input, i, expected, filtered[i])
 				}
 			}
 		})
@@ -143,51 +138,50 @@ func TestPrompterMethodsExist(_ *testing.T) {
 	_ = prompter.Confirm
 }
 
-// Test the exact match and contains filter functions
+// Test individual filter function behaviors
 func TestSearchFilterFunction(t *testing.T) {
+	// Create the filter function that matches the implementation
+	filter := func(filterValue string, optionValue string, _ int) bool {
+		if filterValue == "" {
+			return true
+		}
+		if strings.EqualFold(filterValue, optionValue) {
+			return true
+		}
+		return strings.Contains(
+			strings.ToLower(optionValue),
+			strings.ToLower(filterValue),
+		)
+	}
+
 	testCases := []struct {
-		name          string
-		input         string
-		option        string
-		exactMatch    bool
-		containsMatch bool
+		name     string
+		input    string
+		option   string
+		expected bool
 	}{
-		{"exact match", "test", "test", true, true},
-		{"case insensitive exact", "TEST", "test", true, true},
-		{"mixed case exact", "TeSt", "test", true, true},
-		{"contains match", "est", "test", false, true},
-		{"case insensitive contains", "EST", "test", false, true},
-		{"no match", "xyz", "test", false, false},
-		{"empty input exact", "", "test", false, false},
-		{"empty input contains", "", "anything", false, false},
-		{"special characters exact", "test-1", "test-1", true, true},
-		{"special characters contains", "test-", "test-1", false, true},
-		{"numbers exact", "123", "123", true, true},
-		{"numbers contains", "23", "123", false, true},
-		{"unicode exact", "日本語", "日本語", true, true},
-		{"unicode contains", "日本", "日本語", false, true},
+		{"exact match", "test", "test", true},
+		{"case insensitive exact", "TEST", "test", true},
+		{"mixed case exact", "TeSt", "test", true},
+		{"contains match", "est", "test", true},
+		{"case insensitive contains", "EST", "test", true},
+		{"no match", "xyz", "test", false},
+		{"empty input shows all", "", "test", true},
+		{"empty input with anything", "", "anything", true},
+		{"special characters exact", "test-1", "test-1", true},
+		{"special characters contains", "test-", "test-1", true},
+		{"numbers exact", "123", "123", true},
+		{"numbers contains", "23", "123", true},
+		{"unicode exact", "日本語", "日本語", true},
+		{"unicode contains", "日本", "日本語", true},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Test exact match logic
-			exactResult := strings.EqualFold(tc.input, tc.option)
-			if exactResult != tc.exactMatch {
-				t.Errorf("Exact match('%s', '%s'): expected %v, got %v",
-					tc.input, tc.option, tc.exactMatch, exactResult)
-			}
-
-			// Test contains logic (only if input is not empty)
-			var containsResult bool
-			if tc.input != "" {
-				containsResult = strings.Contains(
-					strings.ToLower(tc.option),
-					strings.ToLower(tc.input),
-				)
-			}
-			if containsResult != tc.containsMatch {
-				t.Errorf("Contains('%s', '%s'): expected %v, got %v",
-					tc.input, tc.option, tc.containsMatch, containsResult)
+			result := filter(tc.input, tc.option, 0)
+			if result != tc.expected {
+				t.Errorf("Filter('%s', '%s'): expected %v, got %v",
+					tc.input, tc.option, tc.expected, result)
 			}
 		})
 	}
@@ -217,112 +211,99 @@ func TestCoreConfiguration(t *testing.T) {
 	}
 }
 
-// Test comprehensive search scenarios
+// Test comprehensive search scenarios with the new filter implementation
 func TestSearchScenarios(t *testing.T) {
-	// Test various search scenarios to ensure comprehensive coverage
+	// Create the filter function that matches the implementation
+	filter := func(filterValue string, optionValue string, _ int) bool {
+		if filterValue == "" {
+			return true
+		}
+		if strings.EqualFold(filterValue, optionValue) {
+			return true
+		}
+		return strings.Contains(
+			strings.ToLower(optionValue),
+			strings.ToLower(filterValue),
+		)
+	}
+
 	testCases := []struct {
-		name           string
-		input          string
-		options        []string
-		expectExact    string
-		expectFiltered []string
-		description    string
+		name        string
+		input       string
+		options     []string
+		expected    []string
+		description string
 	}{
 		{
-			name:           "exact match found",
-			input:          "hello",
-			options:        []string{"hello", "world", "hello-world"},
-			expectExact:    "hello",
-			expectFiltered: []string{"hello", "hello-world"},
-			description:    "exact match should be returned directly",
+			name:        "exact match included in results",
+			input:       "hello",
+			options:     []string{"hello", "world", "hello-world"},
+			expected:    []string{"hello", "hello-world"},
+			description: "exact match and partial matches should be shown",
 		},
 		{
-			name:           "case insensitive exact match",
-			input:          "HELLO",
-			options:        []string{"hello", "world", "hello-world"},
-			expectExact:    "hello",
-			expectFiltered: []string{"hello", "hello-world"},
-			description:    "case insensitive exact match should work",
+			name:        "case insensitive exact match",
+			input:       "HELLO",
+			options:     []string{"hello", "world", "hello-world"},
+			expected:    []string{"hello", "hello-world"},
+			description: "case insensitive matching should work",
 		},
 		{
-			name:           "partial match multiple results",
-			input:          "test",
-			options:        []string{"test-1", "test-2", "other-test", "sample"},
-			expectExact:    "",
-			expectFiltered: []string{"test-1", "test-2", "other-test"},
-			description:    "partial match should show filtered options",
+			name:        "partial match multiple results",
+			input:       "test",
+			options:     []string{"test-1", "test-2", "other-test", "sample"},
+			expected:    []string{"test-1", "test-2", "other-test"},
+			description: "partial matches should be filtered correctly",
 		},
 		{
-			name:           "partial match single result",
-			input:          "unique",
-			options:        []string{"unique-item", "test-1", "test-2"},
-			expectExact:    "",
-			expectFiltered: []string{"unique-item"},
-			description:    "single partial match should be offered",
+			name:        "partial match single result",
+			input:       "unique",
+			options:     []string{"unique-item", "test-1", "test-2"},
+			expected:    []string{"unique-item"},
+			description: "single partial match should be shown",
 		},
 		{
-			name:           "no match",
-			input:          "nonexistent",
-			options:        []string{"test-1", "test-2", "sample"},
-			expectExact:    "",
-			expectFiltered: []string{},
-			description:    "no match should show all options",
+			name:        "no match shows nothing",
+			input:       "nonexistent",
+			options:     []string{"test-1", "test-2", "sample"},
+			expected:    []string{},
+			description: "no matches should return empty list",
 		},
 		{
-			name:           "empty input",
-			input:          "",
-			options:        []string{"test-1", "test-2", "sample"},
-			expectExact:    "",
-			expectFiltered: []string{},
-			description:    "empty input should show no filtered options",
+			name:        "empty input shows all",
+			input:       "",
+			options:     []string{"test-1", "test-2", "sample"},
+			expected:    []string{"test-1", "test-2", "sample"},
+			description: "empty input should show all options",
 		},
 		{
-			name:           "unicode support",
-			input:          "日本",
-			options:        []string{"日本語", "日本国", "english", "test"},
-			expectExact:    "",
-			expectFiltered: []string{"日本語", "日本国"},
-			description:    "unicode characters should work in search",
+			name:        "unicode support",
+			input:       "日本",
+			options:     []string{"日本語", "日本国", "english", "test"},
+			expected:    []string{"日本語", "日本国"},
+			description: "unicode characters should work in search",
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// Test exact match logic
-			var exactMatch string
+			var filtered []string
 			for _, option := range tc.options {
-				if strings.EqualFold(tc.input, option) {
-					exactMatch = option
-					break
+				if filter(tc.input, option, 0) {
+					filtered = append(filtered, option)
 				}
 			}
 
-			if exactMatch != tc.expectExact {
-				t.Errorf("%s: exact match expected '%s', got '%s'",
-					tc.description, tc.expectExact, exactMatch)
-			}
-
-			// Test filtering logic
-			var filteredOptions []string
-			inputLower := strings.ToLower(tc.input)
-
-			for _, option := range tc.options {
-				optionLower := strings.ToLower(option)
-				if tc.input != "" && strings.Contains(optionLower, inputLower) {
-					filteredOptions = append(filteredOptions, option)
-				}
-			}
-
-			if len(filteredOptions) != len(tc.expectFiltered) {
+			if len(filtered) != len(tc.expected) {
 				t.Errorf("%s: filtered count expected %d, got %d",
-					tc.description, len(tc.expectFiltered), len(filteredOptions))
+					tc.description, len(tc.expected), len(filtered))
 				return
 			}
 
-			for i, expected := range tc.expectFiltered {
-				if i >= len(filteredOptions) || filteredOptions[i] != expected {
+			for i, expected := range tc.expected {
+				if i >= len(filtered) || filtered[i] != expected {
 					t.Errorf("%s: filtered[%d] expected '%s', got '%s'",
-						tc.description, i, expected, filteredOptions[i])
+						tc.description, i, expected, filtered[i])
 				}
 			}
 		})
