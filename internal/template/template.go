@@ -62,16 +62,16 @@ type Data struct {
 
 // LoadTemplate loads either a single file or directory template.
 func LoadTemplate(templateType string) (*Template, error) {
-	// まず設定から template type を確認
+	// First, check template type from config
 	config, err := loadTemplateConfig()
 	if err != nil {
-		// 設定ファイルが存在しない場合は従来の単一ファイル読み込み
+		// Fall back to single file loading if config doesn't exist
 		return loadFileTemplate(templateType)
 	}
 
 	templateConfig, exists := config.Templates[templateType]
 	if !exists {
-		// フォールバック: 従来の単一ファイル読み込み
+		// Fallback: traditional single file loading
 		return loadFileTemplate(templateType)
 	}
 
@@ -162,7 +162,7 @@ func loadFileTemplate(templatePath string) (*Template, error) {
 func loadDirectoryTemplate(dirName string) (*Template, error) {
 	templateDir := filepath.Join(".yg", "_templates", dirName)
 
-	// .template-config.yaml を読み込み
+	// Load .template-config.yaml
 	configPath := filepath.Join(templateDir, ".template-config.yaml")
 	configData, err := os.ReadFile(configPath)
 	if err != nil {
@@ -174,7 +174,7 @@ func loadDirectoryTemplate(dirName string) (*Template, error) {
 		return nil, fmt.Errorf("failed to parse template config: %w", err)
 	}
 
-	// ディレクトリ内のテンプレートファイルを読み込み
+	// Load template files in directory
 	files := make(map[string]*FileTemplate)
 	for filename, fileConfig := range config.Files {
 		contentPath := filepath.Join(templateDir, filename)
@@ -280,32 +280,32 @@ func (t *Template) renderSingleFile(data *Data) (*RenderResult, error) {
 func (t *Template) renderDirectory(data *Data) (*RenderResult, error) {
 	result := &RenderResult{Files: []RenderedFile{}}
 
-	// Base path をレンダリング
+	// Render base path
 	basePath, err := renderTemplate("base_path", t.BasePath, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render base path: %w", err)
 	}
 
-	// 各ファイルをレンダリング
+	// Render each file
 	for originalName, fileTemplate := range t.Files {
-		// 有効性をチェック
+		// Check if enabled
 		if fileTemplate.Enabled != "" {
 			enabled, err := renderTemplate("enabled", fileTemplate.Enabled, data)
 			if err != nil {
 				return nil, fmt.Errorf("failed to render enabled condition for %s: %w", originalName, err)
 			}
 			if enabled != "true" {
-				continue // スキップ
+				continue // Skip
 			}
 		}
 
-		// ファイル名をレンダリング
+		// Render filename
 		filename, err := renderTemplate("filename", fileTemplate.Filename, data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render filename for %s: %w", originalName, err)
 		}
 
-		// コンテンツをレンダリング
+		// Render content
 		content, err := renderTemplate("content", fileTemplate.Content, data)
 		if err != nil {
 			return nil, fmt.Errorf("failed to render content for %s: %w", originalName, err)

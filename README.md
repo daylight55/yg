@@ -1,14 +1,14 @@
 # yg
 
-YAML template generator - A CLI tool to generate YAML files from templates based on interactive prompts.
+A CLI tool to generate files from templates based on interactive prompts. Create configuration files, API specifications, and more using customizable templates.
 
 ## Features
 
 - **Interactive Prompts**: Choose options using arrow keys, space for multiple selection
 - **Searchable Interface**: Filter choices with peco-like search functionality  
 - **Dynamic Questions**: Questions adapt based on previous answers
-- **Template Engine**: Flexible YAML template rendering with Go templates
-- **Multi-output**: Generate files for multiple environments and clusters
+- **Template Engine**: Flexible template rendering with Go templates (YAML, JSON, XML, etc.)
+- **Multi-output**: Generate files for multiple environments and targets
 - **CLI Options**: Skip prompts with command-line flags
 - **Signal Handling**: Graceful shutdown with Ctrl+C
 - **Directory Templates**: Support for multi-file template directories 🆕
@@ -47,24 +47,24 @@ yg
 
 This will prompt you with questions to:
 
-1. Select application type (deployment, job)
-2. Choose application name (with search)
+1. Select template type (web-service, configuration, batch-job)
+2. Choose item name (with search)
 3. Select environments (multiple choice)
-4. Choose clusters (based on selected environments)
+4. Choose target destinations (based on selected environments)
 5. Preview generated files
 6. Confirm generation
 
 ### CLI Mode
 
 ```bash
-# Generate deployment YAML
-yg --answer app=deployment --answer appName=my-app --answer env=dev,staging --answer cluster=dev-cluster-1,staging-cluster-1 --yes
+# Generate configuration file
+yg --answer templateType=configuration --answer name=my-config --answer environment=development,staging --answer target=dev-region-1,staging-region-1 --yes
 
-# Generate job YAML  
-yg --answer app=job --answer appName=batch-job --answer env=production --answer cluster=prod-cluster-1 --yes
+# Generate batch job  
+yg --answer templateType=batch-job --answer name=data-processor --answer environment=production --answer target=prod-region-1 --yes
 
-# Generate microservice YAML (directory template)
-yg --answer app=microservice --answer appName=my-api --answer env=dev --answer cluster=dev-cluster-1 --yes
+# Generate web service (directory template)
+yg --answer templateType=web-service --answer name=user-service --answer environment=development --answer target=dev-region-1 --yes
 ```
 
 ### CLI Options
@@ -80,15 +80,15 @@ yg --answer app=microservice --answer appName=my-api --answer env=dev --answer c
 ```console
 .yg/
 └── _templates/
-    ├── .yg-config.yaml      # Question and template configuration
-    ├── deployment.yaml      # Single file template
-    ├── job.yaml            # Single file template
-    └── microservice/       # Directory template (new feature)
+    ├── config.yaml         # Question and template configuration
+    ├── configuration.yaml  # Single file template
+    ├── batch-job.yaml     # Single file template
+    └── web-service/       # Directory template (new feature)
         ├── .template-config.yaml
-        ├── deployment.yaml
-        ├── service.yaml
-        ├── configmap.yaml
-        └── ingress.yaml
+        ├── server-config.yaml
+        ├── database-config.yaml
+        ├── api-spec.yaml
+        └── monitoring-config.yaml
 ```
 
 ### Configuration File (`.yg-config.yaml`)
@@ -98,69 +98,69 @@ The configuration file supports both file and directory templates:
 ```yaml
 # Template definitions (new feature)
 templates:
-  microservice:
+  web-service:
     type: directory      # Directory template with multiple files
-    path: microservice
-  deployment:
+    path: web-service
+  configuration:
     type: file          # Single file template (traditional)
-    path: deployment.yaml
-  job:
+    path: configuration.yaml
+  batch-job:
     type: file
-    path: job.yaml
+    path: batch-job.yaml
 
 # Question configuration
 questions:
-  template_question: "app"  # Which question determines template selection 🆕
+  template_question: "templateType"  # Which question determines template selection 🆕
   order:                    # Question execution order 🆕
-    - app
-    - appName
-    - env
-    - cluster
+    - templateType
+    - name
+    - environment
+    - target
   definitions:             # Question definitions 🆕
-    app:
-      prompt: "アプリの種類はなんですか？"
+    templateType:
+      prompt: "What type of template do you want to use?"
       choices:
-        - microservice   # Directory template
-        - deployment    # File template
-        - job          # File template
-    appName:
-      prompt: "アプリ名は何ですか？"
+        - web-service   # Directory template
+        - configuration    # File template
+        - batch-job          # File template
+    name:
+      prompt: "What is the name of your item?"
       type:
         dynamic:
-          dependency_questions: ["app"]
+          dependency_questions: ["templateType"]
         interactive: true
       choices:
-        microservice:
-          - sample-api-1
-          - sample-api-2
-        deployment:
-          - sample-server-1
-          - sample-server-2
-        job:
-          - sample-job-1
-          - sample-job-2
-    env:
-      prompt: "環境名はなんですか？"
+        web-service:
+          - user-service
+          - payment-api
+        configuration:
+          - database-config
+          - cache-config
+        batch-job:
+          - data-processor
+          - report-generator
+    environment:
+      prompt: "Which environment do you want to target?"
       type:
         multiple: true
       choices:
-        - dev
+        - development
         - staging
         - production
-    cluster:
-      prompt: "クラスターはどこですか？"
+    target:
+      prompt: "Which target destinations do you want to deploy to?"
       type:
         multiple: true
         dynamic:
-          dependency_questions: ["env"]
+          dependency_questions: ["environment"]
       choices:
-        dev:
-          - dev-cluster-1
-          - dev-cluster-2
+        development:
+          - dev-region-1
+          - dev-region-2
         staging:
-          - staging-cluster-1
+          - staging-region-1
         production:
-          - production-cluster-1
+          - prod-region-1
 ```
 
 ### Template Files
@@ -170,8 +170,8 @@ questions:
 Templates use Go template syntax and have metadata headers:
 
 ```yaml
-path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
-filename: {{.Questions.appName}}-deployment.yaml
+path: {{.Questions.environment}}/{{.Questions.target}}/configs
+filename: {{.Questions.name}}-config.yaml
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -187,6 +187,7 @@ spec:
 Directory templates consist of multiple files with shared configuration:
 
 **`.template-config.yaml`**:
+
 ```yaml
 output:
   base_path: "{{.Questions.env}}/{{.Questions.cluster}}/{{.Questions.appName}}"
@@ -232,6 +233,7 @@ questions:
 ```
 
 **Benefits:**
+
 - **Flexible ordering**: Template-determining question doesn't need to be first
 - **Clear configuration**: Explicit rather than heuristic-based template selection
 - **Backward compatible**: Falls back to original heuristic if not specified
@@ -286,7 +288,8 @@ spec:
 
 Running `yg --answer app=microservice --answer appName=my-api --answer env=dev --answer cluster=dev-cluster-1 --yes` generates multiple files:
 
-**Files**: 
+**Files** 
+
 - `dev/dev-cluster-1/my-api/my-api-deployment.yaml`
 - `dev/dev-cluster-1/my-api/my-api-service.yaml`
 - `dev/dev-cluster-1/my-api/my-api-configmap.yaml`

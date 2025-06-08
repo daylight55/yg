@@ -1,72 +1,72 @@
 templates:
-  microservice:
+  web-service:
     type: directory
-    path: microservice
-  deployment:
+    path: web-service
+  configuration:
     type: file
-    path: deployment.yaml
-  job:
+    path: configuration.yaml
+  batch-job:
     type: file
-    path: job.yaml
+    path: batch-job.yaml
 
 questions:
-  template_question: app
+  template_question: templateType
   order:
-    - app
-    - appName
-    - env
-    - cluster
+    - templateType
+    - name
+    - environment
+    - target
   definitions:
-    app:
-      prompt: 'アプリの種類はなんですか？'
+    templateType:
+      prompt: 'What type of template do you want to use?'
       choices:
-        - microservice
-        - deployment
-        - job
-    appName:
-      prompt: 'アプリ名は何ですか？'
+        - web-service
+        - configuration
+        - batch-job
+    name:
+      prompt: 'What is the name of your item?'
       type:
         dynamic:
-          dependency_questions: ['app']
+          dependency_questions: ['templateType']
         interactive: true
       choices:
-        microservice:
-          - sample-api-1
-          - sample-api-2
-          - sample-api-3
-        deployment:
-          - sample-server-1
-          - sample-server-2
-          - sample-server-3
-          - sample-server-4
-          - sample-server-5
-        job:
-          - sample-job-1
-          - sample-job-2
-          - sample-job-3
-          - sample-job-4
-          - sample-job-5
-    env:
-      prompt: '環境名はなんですか？'
+        web-service:
+          - user-service
+          - payment-api
+          - notification-service
+        configuration:
+          - database-config
+          - cache-config
+          - logging-config
+          - monitoring-config
+          - security-config
+        batch-job:
+          - data-processor
+          - report-generator
+          - cleanup-task
+          - backup-job
+          - analytics-job
+    environment:
+      prompt: 'Which environment do you want to target?'
       choices:
-        - dev
+        - development
         - staging
         - production
-    cluster:
-      prompt: 'クラスターはどこですか？'
+    target:
+      prompt: 'Which target destinations do you want to deploy to?'
       type:
         multiple: true
         dynamic:
-          dependency_questions: ['env']
+          dependency_questions: ['environment']
       choices:
-        dev:
-          - dev-cluster-1
-          - dev-cluster-2
-          - dev-cluster-3
+        development:
+          - dev-region-1
+          - dev-region-2
+          - dev-region-3
         staging:
-          - staging-cluster-1
-          - staging-cluster-2
-          - staging-cluster-3
+          - staging-region-1
+          - staging-region-2
+          - staging-region-3
         production:
-          - production-cluster-1
-          - production-cluster-2
+          - prod-region-1
+          - prod-region-2

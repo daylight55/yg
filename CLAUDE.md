@@ -1,42 +1,42 @@
-# YAML template generator
+# Template Generator
 
-このプロジェクトはプロンプトで質問に答えた結果に合わせ、適したYAMLのテンプレートを元にYAMLファイルを出力するGo言語のツールである。
+This project is a Go language tool that generates template files based on interactive prompts. It can generate configuration files, API specifications, and other template-based content.
 
 ## Claude Rule
 
-- 日本語で回答して
-- 修正後にREADME.md/CLAUDE.mdを修正して
-- 修正後にテストと凛とを実行して成功するか確認して、失敗したら修正して。
-- 最後にGitコミットを実行して、GitHubにpushして。
+- Respond in Japanese
+- Update README.md/CLAUDE.md after modifications
+- Run tests and lint after modifications to ensure success, fix if they fail
+- Finally execute Git commit and push to GitHub
 
 ## Guidelines
 
-- Style: Go言語の標準プロジェクト構成で開発する。
-- Coding: 可読性の高いコードを心がける。
-  - 参考: https://google.github.io/styleguide/go/guide
-- Documentation: godocで出力可能なコメントを作成する。
-- Test: テストカバレッジ90%以上のテストコードを作成する。テストケースをテストディレクトリにMarkdownでまとめる。
-- CI/CD: GitHub ActuonsでCIによるテスト、CDによるgo releaserを実行し、GitHub上でバイナリの配布も行う。go installでインストール可能とする。
-- Quality: - エラーハンドリングを適切に行うこと。異常系のテストケースを必ず作成し、問題があった場合は不適切な出力は実行しないようにする。
-- CommitMessage: コミットメッセージはSemantic Commitで、mainブランチへのマージでセマンティックバージョンを上げる。
+- Style: Develop using Go language standard project structure.
+- Coding: Focus on writing readable code.
+  - Reference: https://google.github.io/styleguide/go/guide
+- Documentation: Create comments that can be output with godoc.
+- Test: Create test code with 90% or higher test coverage. Summarize test cases in Markdown in the test directory.
+- CI/CD: Execute tests with CI and go releaser with CD using GitHub Actions, and distribute binaries on GitHub. Make it installable with go install.
+- Quality: Handle errors appropriately. Always create test cases for abnormal systems, and ensure inappropriate output is not executed when problems occur.
+- CommitMessage: Use Semantic Commit for commit messages, and increase semantic version when merging to main branch.
 
 ## Tool Design
 
-目的は、環境ディレクトリ、クラスターのディレクトリに応じて、アプリの系統に合わせたテンプレートを元にYAMLファイルを出力すること。
-ユーザーはプロンプトに答えるだけで、テンプレートに合わせたファイルを、指定ディレクトリに出力可能となる。
+The purpose is to output template files according to environment directories and target directories, based on templates that match the type of content.
+Users can simply answer prompts to output files that match templates to specified directories.
 
 ポイントは以下である。
 
-- プロンプトに応じて、出力ディレクトリを指定できること。
-- プロンプトに応じて、利用するテンプレートファイルを選択できること。
-- プロンプトは前の回答に応じて、動的に選択可能なこと。
-- プロンプトの回答は文字列の入力も受け付け、リアルタイム検索でInteractive searchができること。
-- Interactive search機能では、文字を入力すると選択肢がリアルタイムでフィルタリングされ、全文一致・部分一致の両方に対応。
-- テンプレートファイルに、プロンプトで受け取った値を指定のYAML Pathに合わせて値を埋められること。
-- 出力ディレクトリの質問プロンプトでは複数選択可能であること。
-- プロンプトの質問回答は、CLIオプション（--answer key=value形式）でも設定可能なこと。
-- プロンプト中はCtrl + Cで解除可能なこと。強制終了のシグナルを受け取った場合は元に戻すこと。
-- キャッチーな見た目のTerminal UIを提供すること。
+- Be able to specify output directories according to prompts.
+- Be able to select template files to use according to prompts.
+- Prompts can be dynamically selected according to previous answers.
+- Prompt answers can accept string input and allow interactive search with real-time search.
+- Interactive search function filters choices in real-time when characters are entered, supporting both exact match and partial match.
+- Be able to embed values received from prompts into template files according to specified template paths.
+- Multiple selection is possible for output directory question prompts.
+- Prompt question answers can also be set with CLI options (--answer key=value format).
+- Can be canceled with Ctrl + C during prompts. Return to original state when receiving forced termination signal.
+- Provide an attractive Terminal UI.
 
 ### Usage
 
