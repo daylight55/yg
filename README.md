@@ -58,18 +58,19 @@ This will prompt you with questions to:
 
 ```bash
 # Generate deployment YAML
-yg --app deployment --name my-app --env dev,staging --cluster dev-cluster-1,staging-cluster-1 --yes
+yg --answer app=deployment --answer appName=my-app --answer env=dev,staging --answer cluster=dev-cluster-1,staging-cluster-1 --yes
 
 # Generate job YAML  
-yg --app job --name batch-job --env production --cluster prod-cluster-1 --yes
+yg --answer app=job --answer appName=batch-job --answer env=production --answer cluster=prod-cluster-1 --yes
+
+# Generate microservice YAML (directory template)
+yg --answer app=microservice --answer appName=my-api --answer env=dev --answer cluster=dev-cluster-1 --yes
 ```
 
 ### CLI Options
 
-- `--app`: Application type (deployment, job)
-- `--name`: Application name
-- `--env`: Environments (comma-separated for multiple)
-- `--cluster`: Clusters (comma-separated for multiple)
+- `--answer key=value`: Provide answers for questions (use multiple times for different questions)
+- `--config`, `-c`: Path to config file (default: ./.yg/config.yaml or ./.yg/config.yml)
 - `--yes`: Skip confirmation prompts
 
 ## Configuration
@@ -243,7 +244,7 @@ questions:
 
 #### Single File Template Output
 
-Running `yg --app deployment --name my-app --env dev --cluster dev-cluster-1 --yes` generates:
+Running `yg --answer app=deployment --answer appName=my-app --answer env=dev --answer cluster=dev-cluster-1 --yes` generates:
 
 **File**: `dev/dev-cluster-1/deployment/my-app-deployment.yaml`
 
@@ -283,7 +284,7 @@ spec:
 
 #### Directory Template Output
 
-Running `yg --app microservice --name my-api --env dev --cluster dev-cluster-1 --yes` generates multiple files:
+Running `yg --answer app=microservice --answer appName=my-api --answer env=dev --answer cluster=dev-cluster-1 --yes` generates multiple files:
 
 **Files**: 
 - `dev/dev-cluster-1/my-api/my-api-deployment.yaml`
