@@ -11,11 +11,9 @@ import (
 )
 
 var (
-	answers                          map[string]string
-	skipPrompt                       bool
-	configPath                       string
-	deprecatedApp, deprecatedName    string
-	deprecatedEnv, deprecatedCluster []string
+	answers    map[string]string
+	skipPrompt bool
+	configPath string
 )
 
 var rootCmd = &cobra.Command{
@@ -27,20 +25,6 @@ var rootCmd = &cobra.Command{
 		cfg, err := config.LoadConfig(configPath)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
-		}
-
-		// Handle deprecated flags by mapping them to the new answer format
-		if deprecatedApp != "" {
-			answers["app"] = deprecatedApp
-		}
-		if deprecatedName != "" {
-			answers["appName"] = deprecatedName
-		}
-		if len(deprecatedEnv) > 0 {
-			answers["env"] = strings.Join(deprecatedEnv, ",")
-		}
-		if len(deprecatedCluster) > 0 {
-			answers["cluster"] = strings.Join(deprecatedCluster, ",")
 		}
 
 		// Convert CLI answers to the format expected by generator
@@ -75,17 +59,6 @@ func init() {
 	rootCmd.Flags().BoolVar(&skipPrompt, "yes", false, "Skip prompts and use provided values")
 	rootCmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to config file (default: ./.yg/config.yaml or ./.yg/config.yml)")
 
-	// Keep backward compatibility flags for common questions
-	rootCmd.Flags().StringVar(&deprecatedApp, "app", "", "Application type (deprecated: use --answer app=value)")
-	rootCmd.Flags().StringVar(&deprecatedName, "name", "", "Application name (deprecated: use --answer appName=value)")
-	rootCmd.Flags().StringSliceVar(&deprecatedEnv, "env", []string{}, "Environments (deprecated: use --answer env=value1,value2)")
-	rootCmd.Flags().StringSliceVar(&deprecatedCluster, "cluster", []string{}, "Clusters (deprecated: use --answer cluster=value1,value2)")
-
-	// Mark deprecated flags as deprecated
-	_ = rootCmd.Flags().MarkDeprecated("app", "use --answer app=value instead")
-	_ = rootCmd.Flags().MarkDeprecated("name", "use --answer appName=value instead")
-	_ = rootCmd.Flags().MarkDeprecated("env", "use --answer env=value1,value2 instead")
-	_ = rootCmd.Flags().MarkDeprecated("cluster", "use --answer cluster=value1,value2 instead")
 }
 
 func Execute() {
