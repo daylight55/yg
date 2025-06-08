@@ -13,6 +13,7 @@ YAML template generator - A CLI tool to generate YAML files from templates based
 - **Signal Handling**: Graceful shutdown with Ctrl+C
 - **Directory Templates**: Support for multi-file template directories 🆕
 - **File Templates**: Traditional single-file template support (backward compatible)
+- **Template Question Control**: Configure which question determines template selection 🆕
 
 ## Installation
 
@@ -108,49 +109,57 @@ templates:
 
 # Question configuration
 questions:
-  app:
-    prompt: "アプリの種類はなんですか？"
-    choices:
-      - microservice   # Directory template
-      - deployment    # File template
-      - job          # File template
-  appName:
-    prompt: "アプリ名は何ですか？"
-    type:
-      dynamic:
-        dependency_questions: ["app"]
-      interactive: true
-    choices:
-      microservice:
-        - sample-api-1
-        - sample-api-2
-      deployment:
-        - sample-server-1
-        - sample-server-2
-      job:
-        - sample-job-1
-        - sample-job-2
-  env:
-    prompt: "環境名はなんですか？"
-    multiple: true
-    choices:
-      - dev
-      - staging
-      - production
-  cluster:
-    prompt: "クラスターはどこですか？"
-    multiple: true
-    type:
-      dynamic:
-        dependency_questions: ["env"]
-    choices:
-      dev:
-        - dev-cluster-1
-        - dev-cluster-2
-      staging:
-        - staging-cluster-1
-      production:
-        - production-cluster-1
+  template_question: "app"  # Which question determines template selection 🆕
+  order:                    # Question execution order 🆕
+    - app
+    - appName
+    - env
+    - cluster
+  definitions:             # Question definitions 🆕
+    app:
+      prompt: "アプリの種類はなんですか？"
+      choices:
+        - microservice   # Directory template
+        - deployment    # File template
+        - job          # File template
+    appName:
+      prompt: "アプリ名は何ですか？"
+      type:
+        dynamic:
+          dependency_questions: ["app"]
+        interactive: true
+      choices:
+        microservice:
+          - sample-api-1
+          - sample-api-2
+        deployment:
+          - sample-server-1
+          - sample-server-2
+        job:
+          - sample-job-1
+          - sample-job-2
+    env:
+      prompt: "環境名はなんですか？"
+      type:
+        multiple: true
+      choices:
+        - dev
+        - staging
+        - production
+    cluster:
+      prompt: "クラスターはどこですか？"
+      type:
+        multiple: true
+        dynamic:
+          dependency_questions: ["env"]
+      choices:
+        dev:
+          - dev-cluster-1
+          - dev-cluster-2
+        staging:
+          - staging-cluster-1
+        production:
+          - production-cluster-1
 ```
 
 ### Template Files
@@ -193,6 +202,40 @@ files:
 ```
 
 Each file in the directory is a regular Go template without metadata headers.
+
+### Template Question Configuration 🆕
+
+The `template_question` field allows you to explicitly specify which question determines the template selection:
+
+```yaml
+questions:
+  template_question: "serviceType"  # Specify which question provides template name
+  order:
+    - region                        # First question (multiple selection)
+    - serviceType                   # This determines template
+    - environment                   # Last question (multiple selection)
+  definitions:
+    region:
+      prompt: "Select regions"
+      type:
+        multiple: true
+      choices: ["us-east", "us-west", "eu-west"]
+    serviceType:
+      prompt: "Service type?"
+      choices: ["web-app", "api-service", "batch-job"]
+    environment:
+      prompt: "Target environments"
+      type:
+        multiple: true
+      choices: ["dev", "staging", "prod"]
+```
+
+**Benefits:**
+- **Flexible ordering**: Template-determining question doesn't need to be first
+- **Clear configuration**: Explicit rather than heuristic-based template selection
+- **Backward compatible**: Falls back to original heuristic if not specified
+
+**Fallback behavior**: If `template_question` is not specified, the system uses the first non-multiple question in order (original behavior).
 
 ## Examples
 

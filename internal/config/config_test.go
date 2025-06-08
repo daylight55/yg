@@ -753,3 +753,153 @@ func TestLoadConfigInvalidYaml(t *testing.T) {
 		t.Error("Expected error when loading invalid YAML")
 	}
 }
+
+func TestLoadConfigWithTemplateQuestion(t *testing.T) {
+	// Test loading config with template_question specification
+	tempDir := t.TempDir()
+	configDir := filepath.Join(tempDir, ".yg")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, "config.yaml")
+	configContent := `questions:
+  template_question: "app"
+  definitions:
+    app:
+      prompt: "アプリの種類はなんですか？"
+      choices:
+        - deployment
+        - job
+        - microservice
+    appName:
+      prompt: "アプリ名は何ですか？"
+      choices:
+        - sample-app-1
+        - sample-app-2
+    env:
+      prompt: "環境名はなんですか？"
+      type:
+        multiple: true
+      choices:
+        - dev
+        - staging
+        - production
+  order:
+    - app
+    - appName
+    - env
+`
+
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write temp config file: %v", err)
+	}
+
+	// Change working directory to temp directory
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	// Test loading config
+	config, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Test template_question setting
+	templateQuestion := config.Questions.GetTemplateQuestion()
+	if templateQuestion != "app" {
+		t.Errorf("Expected template_question to be 'app', got '%s'", templateQuestion)
+	}
+
+	// Test that other functionality still works
+	questions := config.Questions.GetQuestions()
+	if len(questions) != 3 {
+		t.Errorf("Expected 3 questions, got %d", len(questions))
+	}
+
+	order := config.Questions.GetOrder()
+	expectedOrder := []string{"app", "appName", "env"}
+	if len(order) != len(expectedOrder) {
+		t.Errorf("Expected order length %d, got %d", len(expectedOrder), len(order))
+	}
+}
+
+func TestLoadConfigWithoutTemplateQuestion(t *testing.T) {
+	// Test backward compatibility - configs without template_question should work
+	tempDir := t.TempDir()
+	configDir := filepath.Join(tempDir, ".yg")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, "config.yaml")
+	configContent := `questions:
+  definitions:
+    app:
+      prompt: "アプリの種類はなんですか？"
+      choices:
+        - deployment
+        - job
+    env:
+      prompt: "環境名はなんですか？"
+      type:
+        multiple: true
+      choices:
+        - dev
+        - staging
+  order:
+    - app
+    - env
+`
+
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write temp config file: %v", err)
+	}
+
+	// Change working directory to temp directory
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	// Test loading config
+	config, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Template question should be empty (using heuristics)
+	templateQuestion := config.Questions.GetTemplateQuestion()
+	if templateQuestion != "" {
+		t.Errorf("Expected template_question to be empty, got '%s'", templateQuestion)
+	}
+
+	// Other functionality should still work
+	questions := config.Questions.GetQuestions()
+	if len(questions) != 2 {
+		t.Errorf("Expected 2 questions, got %d", len(questions))
+	}
+}
+
+func TestGetTemplateQuestion(t *testing.T) {
+	// Test GetTemplateQuestion method directly
+	questions := &Questions{
+		TemplateQuestion: "custom-template-key",
+	}
+
+	result := questions.GetTemplateQuestion()
+	if result != "custom-template-key" {
+		t.Errorf("Expected 'custom-template-key', got '%s'", result)
+	}
+
+	// Test empty template question
+	questions = &Questions{}
+	result = questions.GetTemplateQuestion()
+	if result != "" {
+		t.Errorf("Expected empty string, got '%s'", result)
+	}
+}

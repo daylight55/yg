@@ -23,8 +23,9 @@ type TemplateConfig struct {
 
 // Questions represents the questions configuration with order and definitions.
 type Questions struct {
-	Order       []string            `yaml:"order,omitempty"`
-	Definitions map[string]Question `yaml:"definitions,omitempty"`
+	Order            []string            `yaml:"order,omitempty"`
+	TemplateQuestion string              `yaml:"template_question,omitempty"`
+	Definitions      map[string]Question `yaml:"definitions,omitempty"`
 	// For backward compatibility, support the old direct map format
 	DirectMap map[string]Question `yaml:",inline"`
 }
@@ -117,6 +118,12 @@ func (q *Questions) GetOrder() []string {
 		order = append(order, key)
 	}
 	return order
+}
+
+// GetTemplateQuestion returns the question key that provides the template name.
+// If not specified, returns empty string and the caller should use heuristics.
+func (q *Questions) GetTemplateQuestion() string {
+	return q.TemplateQuestion
 }
 
 // normalize handles backward compatibility by moving direct map to definitions if needed.

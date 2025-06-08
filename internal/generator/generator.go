@@ -164,26 +164,45 @@ func (g *Generator) determineTemplateAndMultiValues() (string, map[string][]stri
 	multiValueQuestions := make(map[string][]string)
 	var templateType string
 
-	// Look for the first non-multi question to use as template type
-	// This is a heuristic - in the future this could be configurable
-	questionOrder := g.config.Questions.GetOrder()
-
-	for _, questionKey := range questionOrder {
-		question, exists := questions[questionKey]
-		if !exists {
-			continue
-		}
-
+	// First, collect all multi-value questions
+	for questionKey, question := range questions {
 		answer := g.answers[questionKey]
 		if question.IsMultiple() {
 			// This is a multi-value question
 			if strSlice, ok := answer.([]string); ok {
 				multiValueQuestions[questionKey] = strSlice
 			}
-		} else if templateType == "" {
-			// Use first single-value question as template type
-			if str, ok := answer.(string); ok {
-				templateType = str
+		}
+	}
+
+	// Determine template type based on configuration or heuristics
+	templateQuestionKey := g.config.Questions.GetTemplateQuestion()
+	if templateQuestionKey != "" {
+		// Use configured template question
+		answer, exists := g.answers[templateQuestionKey]
+		if !exists {
+			return "", nil, fmt.Errorf("template question '%s' not answered", templateQuestionKey)
+		}
+		if str, ok := answer.(string); ok {
+			templateType = str
+		} else {
+			return "", nil, fmt.Errorf("template question '%s' must have a single string answer, got %T", templateQuestionKey, answer)
+		}
+	} else {
+		// Fall back to heuristic: first non-multi question as template type
+		questionOrder := g.config.Questions.GetOrder()
+		for _, questionKey := range questionOrder {
+			question, exists := questions[questionKey]
+			if !exists {
+				continue
+			}
+
+			answer := g.answers[questionKey]
+			if !question.IsMultiple() && templateType == "" {
+				// Use first single-value question as template type
+				if str, ok := answer.(string); ok {
+					templateType = str
+				}
 			}
 		}
 	}

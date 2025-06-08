@@ -17,26 +17,32 @@ type MockPrompter struct {
 	multiSelectResults [][]string
 	searchResults      []string
 	confirmResults     []bool
-	callIndex          int
+	selectIndex        int
+	multiSelectIndex   int
+	searchIndex        int
+	confirmIndex       int
 }
 
 func (m *MockPrompter) Reset() {
-	m.callIndex = 0
+	m.selectIndex = 0
+	m.multiSelectIndex = 0
+	m.searchIndex = 0
+	m.confirmIndex = 0
 }
 
 func (m *MockPrompter) Select(_ string, options []string) (string, error) {
-	if m.callIndex < len(m.selectResults) {
-		result := m.selectResults[m.callIndex]
-		m.callIndex++
+	if m.selectIndex < len(m.selectResults) {
+		result := m.selectResults[m.selectIndex]
+		m.selectIndex++
 		return result, nil
 	}
 	return options[0], nil
 }
 
 func (m *MockPrompter) MultiSelect(_ string, options []string) ([]string, error) {
-	if m.callIndex < len(m.multiSelectResults) {
-		result := m.multiSelectResults[m.callIndex]
-		m.callIndex++
+	if m.multiSelectIndex < len(m.multiSelectResults) {
+		result := m.multiSelectResults[m.multiSelectIndex]
+		m.multiSelectIndex++
 		return result, nil
 	}
 	if len(options) > 0 {
@@ -46,18 +52,18 @@ func (m *MockPrompter) MultiSelect(_ string, options []string) ([]string, error)
 }
 
 func (m *MockPrompter) Search(_ string, options []string) (string, error) {
-	if m.callIndex < len(m.searchResults) {
-		result := m.searchResults[m.callIndex]
-		m.callIndex++
+	if m.searchIndex < len(m.searchResults) {
+		result := m.searchResults[m.searchIndex]
+		m.searchIndex++
 		return result, nil
 	}
 	return options[0], nil
 }
 
 func (m *MockPrompter) Confirm(_ string) (bool, error) {
-	if m.callIndex < len(m.confirmResults) {
-		result := m.confirmResults[m.callIndex]
-		m.callIndex++
+	if m.confirmIndex < len(m.confirmResults) {
+		result := m.confirmResults[m.confirmIndex]
+		m.confirmIndex++
 		return result, nil
 	}
 	return true, nil
@@ -649,5 +655,295 @@ func TestDynamicChoicesInRun(t *testing.T) {
 	}
 	if stagingChoicesFound == 0 {
 		t.Error("No staging cluster choices found in dynamic selection")
+	}
+}
+
+func setupTestEnvironmentWithTemplateQuestion(t *testing.T) string {
+	tempDir := t.TempDir()
+
+	// Create .yg directory structure
+	templateDir := filepath.Join(tempDir, ".yg", "_templates")
+	err := os.MkdirAll(templateDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp template directory: %v", err)
+	}
+
+	// Create config file with template_question specified
+	configFile := filepath.Join(templateDir, ".yg-config.yaml")
+	configContent := `questions:
+  template_question: "appType"  # Explicitly set which question provides template
+  order:
+    - appType
+    - appName
+    - env
+    - cluster
+  definitions:
+    appType:
+      prompt: "アプリケーションタイプを選択してください"
+      choices:
+        - deployment
+        - job
+        - microservice
+    appName:
+      prompt: "アプリ名は何ですか？"
+      type:
+        interactive: true
+      choices:
+        - sample-app-1
+        - sample-app-2
+        - sample-service-1
+    env:
+      prompt: "環境名はなんですか？"
+      type:
+        multiple: true
+      choices:
+        - dev
+        - staging
+        - production
+    cluster:
+      prompt: "クラスターはどこですか？"
+      type:
+        multiple: true
+        dynamic:
+          dependency_questions: ["env"]
+      choices:
+        dev:
+          - dev-cluster-1
+          - dev-cluster-2
+        staging:
+          - staging-cluster-1
+          - staging-cluster-2`
+
+	err = os.WriteFile(configFile, []byte(configContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	// Create template files
+	deploymentTemplate := filepath.Join(templateDir, "deployment.yaml")
+	deploymentContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
+filename: {{.Questions.appName}}-deployment.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}`
+
+	err = os.WriteFile(deploymentTemplate, []byte(deploymentContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write deployment template: %v", err)
+	}
+
+	jobTemplate := filepath.Join(templateDir, "job.yaml")
+	jobContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/job
+filename: {{.Questions.appName}}-job.yaml
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}`
+
+	err = os.WriteFile(jobTemplate, []byte(jobContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write job template: %v", err)
+	}
+
+	microserviceTemplate := filepath.Join(templateDir, "microservice.yaml")
+	microserviceContent := `path: {{.Questions.env}}/{{.Questions.cluster}}/microservice
+filename: {{.Questions.appName}}-microservice.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}
+  labels:
+    type: microservice`
+
+	err = os.WriteFile(microserviceTemplate, []byte(microserviceContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write microservice template: %v", err)
+	}
+
+	return tempDir
+}
+
+func TestDetermineTemplateAndMultiValuesWithTemplateQuestion(t *testing.T) {
+	tempDir := setupTestEnvironmentWithTemplateQuestion(t)
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Set up test answers - note that order is different from typical config
+	generator.answers = map[string]interface{}{
+		"appName": "test-app",                // This would be first non-multi in order
+		"appType": "microservice",            // This is specified as template_question
+		"env":     []string{"dev"},           // Multi-value
+		"cluster": []string{"dev-cluster-1"}, // Multi-value
+	}
+
+	templateType, multiValues, err := generator.determineTemplateAndMultiValues()
+	if err != nil {
+		t.Fatalf("Failed to determine template and multi-values: %v", err)
+	}
+
+	// Should use appType (configured template_question) not appName (first non-multi)
+	if templateType != "microservice" {
+		t.Errorf("Expected template type 'microservice', got '%s'", templateType)
+	}
+
+	if len(multiValues) != 2 {
+		t.Errorf("Expected 2 multi-value questions, got %d", len(multiValues))
+	}
+
+	if _, exists := multiValues["env"]; !exists {
+		t.Error("Expected 'env' in multi-value questions")
+	}
+
+	if _, exists := multiValues["cluster"]; !exists {
+		t.Error("Expected 'cluster' in multi-value questions")
+	}
+}
+
+func TestDetermineTemplateAndMultiValuesWithMissingTemplateQuestion(t *testing.T) {
+	tempDir := setupTestEnvironmentWithTemplateQuestion(t)
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Missing the template question answer
+	generator.answers = map[string]interface{}{
+		"appName": "test-app",
+		"env":     []string{"dev"},
+		"cluster": []string{"dev-cluster-1"},
+		// appType is missing
+	}
+
+	_, _, err = generator.determineTemplateAndMultiValues()
+	if err == nil {
+		t.Error("Expected error when template question is not answered")
+	}
+
+	if !strings.Contains(err.Error(), "template question 'appType' not answered") {
+		t.Errorf("Expected error about missing template question, got: %v", err)
+	}
+}
+
+func TestDetermineTemplateAndMultiValuesWithInvalidTemplateAnswer(t *testing.T) {
+	tempDir := setupTestEnvironmentWithTemplateQuestion(t)
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Template question has non-string answer
+	generator.answers = map[string]interface{}{
+		"appName": "test-app",
+		"appType": []string{"deployment", "job"}, // Array instead of string
+		"env":     []string{"dev"},
+		"cluster": []string{"dev-cluster-1"},
+	}
+
+	_, _, err = generator.determineTemplateAndMultiValues()
+	if err == nil {
+		t.Error("Expected error when template question has non-string answer")
+	}
+
+	if !strings.Contains(err.Error(), "template question 'appType' must have a single string answer") {
+		t.Errorf("Expected error about invalid template answer type, got: %v", err)
+	}
+}
+
+func TestDetermineTemplateAndMultiValuesHeuristicFallback(t *testing.T) {
+	// Test that heuristic fallback still works when template_question is not set
+	tempDir := setupTestEnvironment(t) // This config has no template_question
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Set up test answers
+	generator.answers = map[string]interface{}{
+		"app":     "deployment",
+		"appName": "test-app",
+		"env":     []string{"dev"},
+		"cluster": []string{"dev-cluster-1"},
+	}
+
+	templateType, multiValues, err := generator.determineTemplateAndMultiValues()
+	if err != nil {
+		t.Fatalf("Failed to determine template and multi-values: %v", err)
+	}
+
+	// Should use first non-multi question (app) via heuristic
+	if templateType != "deployment" {
+		t.Errorf("Expected template type 'deployment', got '%s'", templateType)
+	}
+
+	if len(multiValues) != 2 {
+		t.Errorf("Expected 2 multi-value questions, got %d", len(multiValues))
+	}
+}
+
+func TestRunWithTemplateQuestion(t *testing.T) {
+	tempDir := setupTestEnvironmentWithTemplateQuestion(t)
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Mock the prompter
+	mockPrompter := &MockPrompter{
+		selectResults:      []string{"microservice"},               // appType selection
+		searchResults:      []string{"sample-service-1"},           // appName search
+		multiSelectResults: [][]string{{"dev"}, {"dev-cluster-1"}}, // env, then cluster
+		confirmResults:     []bool{true},                           // final confirmation
+	}
+	generator.prompter = mockPrompter
+
+	err = generator.Run()
+	if err != nil {
+		t.Fatalf("Failed to run generator: %v", err)
+	}
+
+	// Check if the microservice template was used
+	expectedFile := filepath.Join(tempDir, "dev", "dev-cluster-1", "microservice", "sample-service-1-microservice.yaml")
+	if _, err := os.Stat(expectedFile); os.IsNotExist(err) {
+		t.Errorf("Expected microservice file %s was not generated", expectedFile)
+	}
+
+	// Read the generated file to verify it used the microservice template
+	content, err := os.ReadFile(expectedFile)
+	if err != nil {
+		t.Fatalf("Failed to read generated file: %v", err)
+	}
+
+	contentStr := string(content)
+	if !strings.Contains(contentStr, "type: microservice") {
+		t.Error("Generated file should contain 'type: microservice' from template")
 	}
 }

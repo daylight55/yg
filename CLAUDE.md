@@ -143,6 +143,8 @@ templates:
     path: job.yaml
 
 questions:
+  # テンプレート名を決定する質問を明示的に指定（新機能）
+  template_question: "app"
   # 質問の実行順序を明示的に指定
   order:
     - app
@@ -213,6 +215,7 @@ questions:
 
 ```yaml
 questions:
+  template_question: "something-1"  # どの質問がテンプレート名を決定するかを指定
   order:
     - something-1
     - something-2
@@ -246,6 +249,37 @@ questions:
         - production
 ```
 
+**テンプレート質問の指定機能（新機能）:**
+
+従来はヒューリスティック（最初のnon-multiple質問）でテンプレート名を決定していましたが、
+`template_question`フィールドで明示的に指定できるようになりました:
+
+```yaml
+questions:
+  template_question: "appType"  # この質問の回答がテンプレート名になる
+  order:
+    - region      # 地域選択（multiple可能）
+    - appType     # アプリタイプ（テンプレート決定）
+    - env         # 環境選択（multiple）
+  definitions:
+    region:
+      prompt: "地域を選択してください"
+      type:
+        multiple: true
+      choices: ["us-east", "us-west", "eu-west"]
+    appType:
+      prompt: "アプリケーションタイプは？"
+      choices: ["web-service", "batch-job", "microservice"]
+    env:
+      prompt: "環境は？"
+      type:
+        multiple: true
+      choices: ["dev", "staging", "prod"]
+```
+
+この場合、`appType`の回答（例: "web-service"）がテンプレート名として使用され、
+対応するテンプレートファイル（`.yg/_templates/web-service.yaml`）が読み込まれます。
+
 **下位互換性:**
 従来の直接指定形式も引き続きサポートされます:
 
@@ -260,6 +294,9 @@ questions:
       multiple: true
     choices: ["dev", "prod"]
 ```
+
+`template_question`が指定されていない場合は、従来通りのヒューリスティック
+（質問順序で最初のnon-multiple質問）でテンプレート名を決定します。
 
 ## テンプレートファイル
 
