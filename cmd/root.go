@@ -11,8 +11,11 @@ import (
 )
 
 var (
-	answers    map[string]string
-	skipPrompt bool
+	answers                          map[string]string
+	skipPrompt                       bool
+	configPath                       string
+	deprecatedApp, deprecatedName    string
+	deprecatedEnv, deprecatedCluster []string
 )
 
 var rootCmd = &cobra.Command{
@@ -21,9 +24,23 @@ var rootCmd = &cobra.Command{
 	Long:  `A CLI tool to generate YAML files from templates based on interactive prompts.`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		// Load config to get available questions for validation
-		cfg, err := config.LoadConfig()
+		cfg, err := config.LoadConfig(configPath)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
+		}
+
+		// Handle deprecated flags by mapping them to the new answer format
+		if deprecatedApp != "" {
+			answers["app"] = deprecatedApp
+		}
+		if deprecatedName != "" {
+			answers["appName"] = deprecatedName
+		}
+		if len(deprecatedEnv) > 0 {
+			answers["env"] = strings.Join(deprecatedEnv, ",")
+		}
+		if len(deprecatedCluster) > 0 {
+			answers["cluster"] = strings.Join(deprecatedCluster, ",")
 		}
 
 		// Convert CLI answers to the format expected by generator
@@ -56,12 +73,13 @@ func init() {
 	// For now, use StringToString flag to accept arbitrary key-value pairs
 	rootCmd.Flags().StringToStringVar(&answers, "answer", map[string]string{}, "Answers for questions in format key=value")
 	rootCmd.Flags().BoolVar(&skipPrompt, "yes", false, "Skip prompts and use provided values")
+	rootCmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to config file (default: ./.yg/config.yaml or ./.yg/config.yml)")
 
 	// Keep backward compatibility flags for common questions
-	rootCmd.Flags().StringVar(new(string), "app", "", "Application type (deprecated: use --answer app=value)")
-	rootCmd.Flags().StringVar(new(string), "name", "", "Application name (deprecated: use --answer appName=value)")
-	rootCmd.Flags().StringSlice("env", []string{}, "Environments (deprecated: use --answer env=value1,value2)")
-	rootCmd.Flags().StringSlice("cluster", []string{}, "Clusters (deprecated: use --answer cluster=value1,value2)")
+	rootCmd.Flags().StringVar(&deprecatedApp, "app", "", "Application type (deprecated: use --answer app=value)")
+	rootCmd.Flags().StringVar(&deprecatedName, "name", "", "Application name (deprecated: use --answer appName=value)")
+	rootCmd.Flags().StringSliceVar(&deprecatedEnv, "env", []string{}, "Environments (deprecated: use --answer env=value1,value2)")
+	rootCmd.Flags().StringSliceVar(&deprecatedCluster, "cluster", []string{}, "Clusters (deprecated: use --answer cluster=value1,value2)")
 
 	// Mark deprecated flags as deprecated
 	_ = rootCmd.Flags().MarkDeprecated("app", "use --answer app=value instead")
@@ -78,10 +96,10 @@ func Execute() {
 }
 
 func runGenerator(options *generator.Options) error {
-	generator, err := generator.New()
+	gen, err := generator.NewWithConfig(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to initialize generator: %w", err)
 	}
 
-	return generator.RunWithOptions(options)
+	return gen.RunWithOptions(options)
 }

@@ -50,7 +50,7 @@ func TestLoadConfig(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Test loading config
-	config, err := LoadConfig()
+	config, err := LoadConfig("")
 	if err != nil {
 		t.Fatalf("Failed to load config: %v", err)
 	}
@@ -78,6 +78,89 @@ func TestLoadConfig(t *testing.T) {
 		if i >= len(order) || order[i] != expected {
 			t.Errorf("Expected order[%d] = %s, got %v", i, expected, order)
 		}
+	}
+}
+
+func TestLoadConfigNewPath(t *testing.T) {
+	// Test new .yg/config.yaml path
+	tempDir := t.TempDir()
+	configDir := filepath.Join(tempDir, ".yg")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	configFile := filepath.Join(configDir, "config.yaml")
+	configContent := `questions:
+  definitions:
+    app:
+      prompt: "アプリの種類はなんですか？"
+      choices:
+        - deployment
+        - job
+  order:
+    - app
+`
+
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write temp config file: %v", err)
+	}
+
+	// Change working directory to temp directory
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	// Test loading config
+	config, err := LoadConfig("")
+	if err != nil {
+		t.Fatalf("Failed to load config: %v", err)
+	}
+
+	questions := config.Questions.GetQuestions()
+	if len(questions) != 1 {
+		t.Errorf("Expected 1 question, got %d", len(questions))
+	}
+
+	if questions["app"].Prompt != testAppPrompt {
+		t.Errorf("Unexpected app prompt: %s", questions["app"].Prompt)
+	}
+}
+
+func TestLoadConfigSpecificPath(t *testing.T) {
+	// Test loading config from specific path
+	tempDir := t.TempDir()
+	customConfigPath := filepath.Join(tempDir, "custom-config.yaml")
+	configContent := `questions:
+  definitions:
+    custom:
+      prompt: "Custom question?"
+      choices:
+        - option1
+        - option2
+  order:
+    - custom
+`
+
+	err := os.WriteFile(customConfigPath, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write custom config file: %v", err)
+	}
+
+	// Test loading config with specific path
+	config, err := LoadConfig(customConfigPath)
+	if err != nil {
+		t.Fatalf("Failed to load config from specific path: %v", err)
+	}
+
+	questions := config.Questions.GetQuestions()
+	if len(questions) != 1 {
+		t.Errorf("Expected 1 question, got %d", len(questions))
+	}
+
+	if questions["custom"].Prompt != "Custom question?" {
+		t.Errorf("Unexpected custom prompt: %s", questions["custom"].Prompt)
 	}
 }
 
@@ -117,7 +200,7 @@ func TestLoadConfigBackwardCompatibility(t *testing.T) {
 	_ = os.Chdir(tempDir)
 
 	// Test loading config
-	config, err := LoadConfig()
+	config, err := LoadConfig("")
 	if err != nil {
 		t.Fatalf("Failed to load old format config: %v", err)
 	}
@@ -149,9 +232,16 @@ func TestLoadConfigFileNotFound(t *testing.T) {
 	defer func() { _ = os.Chdir(originalWd) }()
 	_ = os.Chdir(tempDir)
 
-	_, err := LoadConfig()
+	_, err := LoadConfig("")
 	if err == nil {
 		t.Error("Expected error when config file doesn't exist")
+	}
+}
+
+func TestLoadConfigSpecificPathNotFound(t *testing.T) {
+	_, err := LoadConfig("/nonexistent/path/config.yaml")
+	if err == nil {
+		t.Error("Expected error when specific config file doesn't exist")
 	}
 }
 
@@ -658,7 +748,7 @@ func TestLoadConfigInvalidYaml(t *testing.T) {
 	defer func() { _ = os.Chdir(originalWd) }()
 	_ = os.Chdir(tempDir)
 
-	_, err = LoadConfig()
+	_, err = LoadConfig("")
 	if err == nil {
 		t.Error("Expected error when loading invalid YAML")
 	}
