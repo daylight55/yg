@@ -57,23 +57,55 @@ func (p *Prompter) MultiSelect(message string, options []string) ([]string, erro
 	return result, nil
 }
 
-// Search prompts the user with a searchable interface.
+// Search prompts the user with a searchable interface and text input support.
 func (p *Prompter) Search(message string, options []string) (string, error) {
 	var result string
-	prompt := &survey.Select{
-		Message: message,
-		Options: options,
-		Filter: func(filterValue string, optionValue string, _ int) bool {
-			// Implement case-insensitive prefix matching
-			return strings.HasPrefix(
-				strings.ToLower(optionValue),
-				strings.ToLower(filterValue),
-			)
-		},
+
+	// First, try text input to check for exact match
+	textPrompt := &survey.Input{
+		Message: message + " (入力するか↓↑で選択):",
 	}
 
-	if err := survey.AskOne(prompt, &result); err != nil {
-		return "", fmt.Errorf("failed to get search result: %w", err)
+	if err := survey.AskOne(textPrompt, &result); err != nil {
+		return "", fmt.Errorf("failed to get text input: %w", err)
+	}
+
+	// Check if the input exactly matches any option
+	for _, option := range options {
+		if strings.EqualFold(result, option) {
+			return option, nil
+		}
+	}
+
+	// If no exact match found, show filtered selection
+	filteredOptions := make([]string, 0)
+	inputLower := strings.ToLower(result)
+
+	for _, option := range options {
+		optionLower := strings.ToLower(option)
+		if strings.Contains(optionLower, inputLower) {
+			filteredOptions = append(filteredOptions, option)
+		}
+	}
+
+	// If no matches found, show all options
+	if len(filteredOptions) == 0 {
+		filteredOptions = options
+	}
+
+	// If only one match, return it directly
+	if len(filteredOptions) == 1 {
+		return filteredOptions[0], nil
+	}
+
+	// Show selection from filtered options
+	selectPrompt := &survey.Select{
+		Message: "選択してください:",
+		Options: filteredOptions,
+	}
+
+	if err := survey.AskOne(selectPrompt, &result); err != nil {
+		return "", fmt.Errorf("failed to get selection: %w", err)
 	}
 
 	return result, nil
