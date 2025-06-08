@@ -10,6 +10,7 @@ templates:
     path: job.yaml
 
 questions:
+  template_question: app
   order:
     - app
     - appName
@@ -17,16 +18,16 @@ questions:
     - cluster
   definitions:
     app:
-      prompt: "アプリの種類はなんですか？"
+      prompt: 'アプリの種類はなんですか？'
       choices:
         - microservice
         - deployment
         - job
     appName:
-      prompt: "アプリ名は何ですか？"
+      prompt: 'アプリ名は何ですか？'
       type:
         dynamic:
-          dependency_questions: ["app"]
+          dependency_questions: ['app']
         interactive: true
       choices:
         microservice:
@@ -46,7 +47,7 @@ questions:
           - sample-job-4
           - sample-job-5
     env:
-      prompt: "環境名はなんですか？"
+      prompt: '環境名はなんですか？'
       type:
         multiple: true
       choices:
@@ -54,11 +55,11 @@ questions:
         - staging
         - production
     cluster:
-      prompt: "クラスターはどこですか？"
+      prompt: 'クラスターはどこですか？'
       type:
         multiple: true
         dynamic:
-          dependency_questions: ["env"]
+          dependency_questions: ['env']
       choices:
         dev:
           - dev-cluster-1
