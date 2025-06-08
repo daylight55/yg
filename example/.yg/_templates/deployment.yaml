@@ -1,0 +1,34 @@
+path: {{.Questions.env}}/{{.Questions.cluster}}/deployment
+filename: {{.Questions.appName}}-deployment.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}
+  labels:
+    app: {{.Questions.appName}}
+    env: {{.Questions.env}}
+    cluster: {{.Questions.cluster}}
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: {{.Questions.appName}}
+  template:
+    metadata:
+      labels:
+        app: {{.Questions.appName}}
+        env: {{.Questions.env}}
+        cluster: {{.Questions.cluster}}
+    spec:
+      containers:
+      - name: {{.Questions.appName}}
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: ENV
+          value: {{.Questions.env}}
+        - name: CLUSTER
+          value: {{.Questions.cluster}}

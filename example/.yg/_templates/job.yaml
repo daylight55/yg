@@ -1,0 +1,30 @@
+path: {{.Questions.env}}/{{.Questions.cluster}}/job
+filename: {{.Questions.appName}}-job.yaml
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{.Questions.appName}}
+  namespace: {{.Questions.env}}
+  labels:
+    app: {{.Questions.appName}}
+    env: {{.Questions.env}}
+    cluster: {{.Questions.cluster}}
+spec:
+  template:
+    metadata:
+      labels:
+        app: {{.Questions.appName}}
+        env: {{.Questions.env}}
+        cluster: {{.Questions.cluster}}
+    spec:
+      containers:
+      - name: {{.Questions.appName}}
+        image: busybox:latest
+        command: ["sh", "-c", "echo Hello from {{.Questions.appName}} in {{.Questions.env}}/{{.Questions.cluster}}"]
+        env:
+        - name: ENV
+          value: {{.Questions.env}}
+        - name: CLUSTER
+          value: {{.Questions.cluster}}
+      restartPolicy: Never
