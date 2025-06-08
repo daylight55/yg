@@ -54,4 +54,4 @@ release:
   github:
     owner: daylight55
     name: yg
-  name_template: '{{.ProjectName}}-v{{.Version}}'
+  name_template: 'v{{.Version}}'
