@@ -87,7 +87,7 @@ func LoadTemplate(templateType string) (*Template, error) {
 
 // loadTemplateConfig loads the template configuration from config file.
 func loadTemplateConfig() (*ConfigFile, error) {
-	configPath := filepath.Join(".yg", "_templates", ".yg-config.yaml")
+	configPath := filepath.Join(".yg", "config.yaml")
 
 	data, err := os.ReadFile(configPath)
 	if err != nil {
