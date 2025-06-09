@@ -51,7 +51,4 @@ changelog:
       - '^test:'
 
 release:
-  github:
-    owner: daylight55
-    name: yg
-  name_template: 'v{{.Version}}'
+  mode: keep-existing
