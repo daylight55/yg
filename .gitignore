@@ -37,9 +37,9 @@ dist/
 bin/
 
 # Generated test directories
-dev/
-staging/
-production/
+example/development/
+example/staging/
+example/production/
 
 
 # OS generated files

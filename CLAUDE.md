@@ -123,7 +123,10 @@ dev/dev-cluster-3/sample-api-1/sample-api-1-ingress.yaml
 Q. 出力して問題ないですか? [Y/N]
 > Y
 
-# 生成成功の結果が出力される。
+# 生成成功の結果とCLI例が出力される。（新機能）
+CLI Example:
+yg --yes --answer app=microservice --answer appName=sample-api-1 --answer env=dev --answer cluster=dev-cluster-1,dev-cluster-2,dev-cluster-3
+
 generated!
 ```
 
