@@ -960,7 +960,7 @@ func TestShowCLIExample(t *testing.T) {
 	// Note: Since showCLIExample prints to stdout, we'd need to capture it
 	// For this test, we'll just verify it doesn't panic
 	generator.showCLIExample()
-	
+
 	// The function should execute without error
 	// Visual verification would show:
 	// CLI Example:
