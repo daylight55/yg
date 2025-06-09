@@ -628,31 +628,40 @@ func TestDynamicChoicesInRun(t *testing.T) {
 		t.Fatalf("Failed to get dynamic choices: %v", err)
 	}
 
-	// Should get choices from both dev and staging environments
-	expectedChoices := []string{"dev-cluster-1", "dev-cluster-2", "dev-cluster-3", "staging-cluster-1", "staging-cluster-2", "staging-cluster-3"}
+	// Should get choices from both dev and staging environments in hierarchical format
 	if len(choices) < 3 { // At least dev choices should be present
 		t.Errorf("Expected at least 3 dynamic choices, got %d: %v", len(choices), choices)
 	}
 
-	// Verify that choices contain expected values from both environments
-	choiceMap := make(map[string]bool)
-	for _, choice := range choices {
-		choiceMap[choice] = true
-	}
-
+	// Verify that choices contain hierarchical format and expected values from both environments
 	devChoicesFound := 0
 	stagingChoicesFound := 0
-	for _, choice := range expectedChoices {
-		if choiceMap[choice] {
-			if strings.Contains(choice, "dev") {
-				devChoicesFound++
-			}
-			if strings.Contains(choice, "staging") {
-				stagingChoicesFound++
+	hierarchicalChoicesFound := 0
+
+	for _, choice := range choices {
+		// Check if choice is in hierarchical format
+		if strings.Contains(choice, ": ") {
+			hierarchicalChoicesFound++
+
+			// Parse hierarchical choice to check parent environment
+			parts := strings.SplitN(choice, ": ", 2)
+			if len(parts) == 2 {
+				parent := parts[0]
+				child := parts[1]
+
+				if parent == "dev" && strings.Contains(child, "dev-cluster") {
+					devChoicesFound++
+				}
+				if parent == "staging" && strings.Contains(child, "staging-cluster") {
+					stagingChoicesFound++
+				}
 			}
 		}
 	}
 
+	if hierarchicalChoicesFound == 0 {
+		t.Error("Expected hierarchical choices with format 'parent: child', but none found")
+	}
 	if devChoicesFound == 0 {
 		t.Error("No dev cluster choices found in dynamic selection")
 	}

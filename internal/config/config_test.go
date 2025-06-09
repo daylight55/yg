@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -292,10 +293,12 @@ func TestQuestionGetDynamicChoices(t *testing.T) {
 		t.Fatalf("Failed to get dynamic choices: %v", err)
 	}
 
-	// Should return all clusters from both environments
-	expectedChoices := []string{"dev-cluster-1", "dev-cluster-2", "staging-cluster-1"}
-	if len(choices) != len(expectedChoices) {
-		t.Errorf("Expected %d choices, got %d", len(expectedChoices), len(choices))
+	// Should return all clusters from both environments in hierarchical format
+	expectedHierarchicalChoices := []string{
+		"dev: dev-cluster-1", "dev: dev-cluster-2", "staging: staging-cluster-1",
+	}
+	if len(choices) != len(expectedHierarchicalChoices) {
+		t.Errorf("Expected %d choices, got %d", len(expectedHierarchicalChoices), len(choices))
 	}
 
 	choiceMap := make(map[string]bool)
@@ -303,9 +306,9 @@ func TestQuestionGetDynamicChoices(t *testing.T) {
 		choiceMap[choice] = true
 	}
 
-	for _, expected := range expectedChoices {
+	for _, expected := range expectedHierarchicalChoices {
 		if !choiceMap[expected] {
-			t.Errorf("Expected choice %s not found", expected)
+			t.Errorf("Expected hierarchical choice %s not found", expected)
 		}
 	}
 }
@@ -616,20 +619,23 @@ func TestQuestionGetChoicesMultipleDependencies(t *testing.T) {
 		t.Fatalf("Failed to get choices for multiple environments: %v", err)
 	}
 
-	// Should get combined choices from both environments (no duplicates)
-	expectedMultiple := []string{"dev-cluster-1", "dev-cluster-2", "staging-cluster-1", "staging-cluster-2"}
+	// Should get combined choices from both environments in hierarchical format
+	expectedMultiple := []string{
+		"dev: dev-cluster-1", "dev: dev-cluster-2",
+		"staging: staging-cluster-1", "staging: staging-cluster-2",
+	}
 	if len(choices) != len(expectedMultiple) {
 		t.Errorf("Expected %d choices for multiple envs, got %d", len(expectedMultiple), len(choices))
 	}
 
-	// Verify all expected choices are present
+	// Verify all expected hierarchical choices are present
 	choiceMap := make(map[string]bool)
 	for _, choice := range choices {
 		choiceMap[choice] = true
 	}
 	for _, expected := range expectedMultiple {
 		if !choiceMap[expected] {
-			t.Errorf("Expected choice %s not found in results", expected)
+			t.Errorf("Expected hierarchical choice %s not found in results", expected)
 		}
 	}
 }
@@ -885,5 +891,55 @@ func TestGetTemplateQuestion(t *testing.T) {
 	result = questions.GetTemplateQuestion()
 	if result != "" {
 		t.Errorf("Expected empty string, got '%s'", result)
+	}
+}
+
+func TestQuestionGetChoicesHierarchicalMultipleSelection(t *testing.T) {
+	// Test the new hierarchical multiple selection implementation
+	question := Question{
+		Type: &QuestionType{
+			Dynamic: &DynamicType{
+				DependencyQuestions: []string{"env"},
+			},
+		},
+		Choices: map[string]interface{}{
+			"dev": []interface{}{"dev-cluster-1", "dev-cluster-2", "dev-cluster-3"},
+			"stg": []interface{}{"stg-cluster-1", "stg-cluster-2", "stg-cluster-3"},
+		},
+	}
+
+	// When multiple environments are selected, choices should show hierarchy
+	answers := map[string]interface{}{
+		"env": []string{"dev", "stg"},
+	}
+
+	choices, err := question.GetChoices(answers)
+	if err != nil {
+		t.Fatalf("Failed to get choices: %v", err)
+	}
+
+	// New implementation should return formatted choices showing hierarchy
+	t.Logf("New implementation returns: %v", choices)
+
+	// Expected behavior: choices formatted as "parent: child" to preserve hierarchy
+	expectedFormattedChoices := []string{
+		"dev: dev-cluster-1", "dev: dev-cluster-2", "dev: dev-cluster-3",
+		"stg: stg-cluster-1", "stg: stg-cluster-2", "stg: stg-cluster-3",
+	}
+
+	if len(choices) != len(expectedFormattedChoices) {
+		t.Errorf("Expected %d choices, got %d", len(expectedFormattedChoices), len(choices))
+	}
+
+	// Verify that choices contain hierarchical format
+	hierarchicalChoices := 0
+	for _, choice := range choices {
+		if strings.Contains(choice, ": ") {
+			hierarchicalChoices++
+		}
+	}
+
+	if hierarchicalChoices != len(choices) {
+		t.Errorf("Expected all choices to be hierarchical, got %d out of %d", hierarchicalChoices, len(choices))
 	}
 }

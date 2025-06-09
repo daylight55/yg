@@ -190,8 +190,9 @@ func (q *Question) resolveDynamicChoices(choices, answers map[string]interface{}
 
 		// If multiple values are provided, collect choices from all values
 		if len(answerValues) > 1 {
-			allChoices := make(map[string]bool) // To avoid duplicates
-			var result []string
+			// For hierarchical multiple selection, we need to preserve the structure
+			// by creating grouped choices that maintain the parent-child relationship
+			groupedChoices := make(map[string][]string)
 
 			for _, answerStr := range answerValues {
 				currentMap, ok := current.(map[string]interface{})
@@ -205,13 +206,11 @@ func (q *Question) resolveDynamicChoices(choices, answers map[string]interface{}
 
 				switch nextValue := next.(type) {
 				case []interface{}:
-					// Direct choice list
+					// Direct choice list - add with parent prefix
 					for _, choice := range nextValue {
 						choiceStr := fmt.Sprintf("%v", choice)
-						if !allChoices[choiceStr] {
-							result = append(result, choiceStr)
-							allChoices[choiceStr] = true
-						}
+						// Group choices by their parent dependency value
+						groupedChoices[answerStr] = append(groupedChoices[answerStr], choiceStr)
 					}
 				case map[string]interface{}:
 					// Nested structure - collect all choices from nested maps
@@ -219,13 +218,20 @@ func (q *Question) resolveDynamicChoices(choices, answers map[string]interface{}
 						if choiceList, ok := subChoices.([]interface{}); ok {
 							for _, choice := range choiceList {
 								choiceStr := fmt.Sprintf("%v", choice)
-								if !allChoices[choiceStr] {
-									result = append(result, choiceStr)
-									allChoices[choiceStr] = true
-								}
+								groupedChoices[answerStr] = append(groupedChoices[answerStr], choiceStr)
 							}
 						}
 					}
+				}
+			}
+
+			// Create formatted choices that show the hierarchy
+			var result []string
+			for parent, childChoices := range groupedChoices {
+				for _, choice := range childChoices {
+					// Format: "parent: choice" to show the relationship
+					formattedChoice := fmt.Sprintf("%s: %s", parent, choice)
+					result = append(result, formattedChoice)
 				}
 			}
 
