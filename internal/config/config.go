@@ -13,6 +13,12 @@ import (
 type Config struct {
 	Questions Questions                 `yaml:"questions"`
 	Templates map[string]TemplateConfig `yaml:"templates,omitempty"`
+	Preview   *PreviewConfig            `yaml:"preview,omitempty"`
+}
+
+// PreviewConfig represents preview configuration.
+type PreviewConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // TemplateConfig represents template configuration.

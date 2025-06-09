@@ -2,6 +2,14 @@
 
 This project is a Go language tool that generates template files based on interactive prompts. It can generate configuration files, API specifications, and other template-based content.
 
+## Recent Updates
+
+- Added preview control functionality (Issue #22)
+  - Config file setting: `preview.enabled`
+  - CLI option: `--no-preview`
+  - CLI option takes precedence over config setting
+  - Default behavior: preview enabled
+
 ## Claude Rule
 
 - Respond in Japanese

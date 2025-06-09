@@ -14,6 +14,7 @@ var (
 	answers    map[string]string
 	skipPrompt bool
 	configPath string
+	noPreview  bool
 )
 
 var rootCmd = &cobra.Command{
@@ -45,6 +46,7 @@ var rootCmd = &cobra.Command{
 		options := &generator.Options{
 			Answers:    generatorAnswers,
 			SkipPrompt: skipPrompt,
+			NoPreview:  noPreview,
 		}
 		return runGenerator(options)
 	},
@@ -58,6 +60,7 @@ func init() {
 	rootCmd.Flags().StringToStringVar(&answers, "answer", map[string]string{}, "Answers for questions in format key=value")
 	rootCmd.Flags().BoolVar(&skipPrompt, "yes", false, "Skip prompts and use provided values")
 	rootCmd.Flags().StringVarP(&configPath, "config", "c", "", "Path to config file (default: ./.yg/config.yaml or ./.yg/config.yml)")
+	rootCmd.Flags().BoolVar(&noPreview, "no-preview", false, "Disable output preview")
 }
 
 func Execute() {
