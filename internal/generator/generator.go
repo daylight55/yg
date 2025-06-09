@@ -19,6 +19,7 @@ import (
 type Options struct {
 	Answers    map[string]interface{}
 	SkipPrompt bool
+	NoPreview  bool
 }
 
 // Generator handles the main generation workflow.
@@ -115,9 +116,12 @@ func (g *Generator) RunWithOptions(options *Options) error {
 		}
 	}
 
-	// Generate and show preview
-	if err := g.generatePreview(); err != nil {
-		return fmt.Errorf("failed to generate preview: %w", err)
+	// Generate and show preview (unless disabled)
+	previewEnabled := g.shouldShowPreview(options)
+	if previewEnabled {
+		if err := g.generatePreview(); err != nil {
+			return fmt.Errorf("failed to generate preview: %w", err)
+		}
 	}
 
 	// Confirm generation (skip if using --yes flag)
@@ -402,6 +406,22 @@ func (g *Generator) generatePreview() error {
 	}
 
 	return nil
+}
+
+// shouldShowPreview determines if preview should be shown based on config and CLI options.
+func (g *Generator) shouldShowPreview(options *Options) bool {
+	// CLI option takes precedence
+	if options.NoPreview {
+		return false
+	}
+
+	// Check config setting
+	if g.config.Preview != nil {
+		return g.config.Preview.Enabled
+	}
+
+	// Default to enabled if no configuration is set
+	return true
 }
 
 func (g *Generator) generateFiles() error {

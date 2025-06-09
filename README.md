@@ -81,6 +81,7 @@ yg --answer templateType=web-service --answer name=user-service --answer environ
 - `--answer key=value`: Provide answers for questions (use multiple times for different questions)
 - `--config`, `-c`: Path to config file (default: ./.yg/config.yaml or ./.yg/config.yml)
 - `--yes`: Skip confirmation prompts
+- `--no-preview`: Disable output preview before generation 🆕
 
 ## Configuration
 
@@ -116,6 +117,10 @@ templates:
   batch-job:
     type: file
     path: batch-job.yaml
+
+# Preview configuration 🆕
+preview:
+  enabled: true  # Enable/disable output preview (default: true)
 
 # Question configuration
 questions:
@@ -349,6 +354,33 @@ golangci-lint run
 ├── .yg/_templates/       # Sample configuration and templates
 └── main.go              # Entry point
 ```
+
+## Preview Control 🆕
+
+Control whether output preview is shown before file generation:
+
+### Via Configuration File
+
+```yaml
+preview:
+  enabled: false  # Disable preview for all runs
+```
+
+### Via CLI Option
+
+```bash
+# Disable preview for this run only
+yg --no-preview
+
+# CLI option takes precedence over config file
+yg --no-preview  # Will skip preview even if config has enabled: true
+```
+
+### Default Behavior
+
+- Preview is **enabled by default** if no configuration is specified
+- CLI `--no-preview` flag takes precedence over config file setting
+- Preview shows output file paths and content before generation
 
 ## Contributing
 

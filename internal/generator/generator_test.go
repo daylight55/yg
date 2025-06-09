@@ -993,3 +993,125 @@ func TestShowCLIExampleNoAnswers(t *testing.T) {
 	// Should not panic with empty answers
 	generator.showCLIExample()
 }
+
+func TestShouldShowPreview(t *testing.T) {
+	tempDir := setupTestEnvironment(t)
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	// Test with no preview config (should default to enabled)
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	options := &Options{}
+	if !generator.shouldShowPreview(options) {
+		t.Error("Expected preview to be enabled by default")
+	}
+
+	// Test with CLI flag disabled
+	options.NoPreview = true
+	if generator.shouldShowPreview(options) {
+		t.Error("Expected preview to be disabled with NoPreview flag")
+	}
+}
+
+func TestShouldShowPreviewWithConfig(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create config with preview disabled
+	configDir := filepath.Join(tempDir, ".yg")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	configContent := `questions:
+  definitions:
+    app:
+      prompt: "What type of template?"
+      choices:
+        - deployment
+  order:
+    - app
+preview:
+  enabled: false
+`
+	configFile := filepath.Join(configDir, "config.yaml")
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Test with preview disabled in config
+	options := &Options{}
+	if generator.shouldShowPreview(options) {
+		t.Error("Expected preview to be disabled per config")
+	}
+
+	// Test CLI override - CLI should take precedence
+	options.NoPreview = false // CLI doesn't disable preview
+	if generator.shouldShowPreview(options) {
+		t.Error("Expected preview to be disabled per config even with CLI not set")
+	}
+}
+
+func TestShouldShowPreviewConfigEnabled(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create config with preview enabled
+	configDir := filepath.Join(tempDir, ".yg")
+	err := os.MkdirAll(configDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create config directory: %v", err)
+	}
+
+	configContent := `questions:
+  definitions:
+    app:
+      prompt: "What type of template?"
+      choices:
+        - deployment
+  order:
+    - app
+preview:
+  enabled: true
+`
+	configFile := filepath.Join(configDir, "config.yaml")
+	err = os.WriteFile(configFile, []byte(configContent), 0600)
+	if err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	originalWd, _ := os.Getwd()
+	defer func() { _ = os.Chdir(originalWd) }()
+	_ = os.Chdir(tempDir)
+
+	generator, err := New()
+	if err != nil {
+		t.Fatalf("Failed to create generator: %v", err)
+	}
+
+	// Test with preview enabled in config
+	options := &Options{}
+	if !generator.shouldShowPreview(options) {
+		t.Error("Expected preview to be enabled per config")
+	}
+
+	// Test CLI override takes precedence over config
+	options.NoPreview = true
+	if generator.shouldShowPreview(options) {
+		t.Error("Expected CLI NoPreview to override config enabled setting")
+	}
+}
