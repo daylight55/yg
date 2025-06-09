@@ -247,27 +247,6 @@ func (g *Generator) generateCombinations(multiValueQuestions map[string][]string
 	return combinations
 }
 
-func (g *Generator) generateCombinationsRecursive(
-	keys []string, values [][]string, index int,
-	current map[string]string, result *[]map[string]interface{},
-) {
-	if index >= len(keys) {
-		// Create a copy of the base answers and override with current combination
-		combination := g.copyAnswers()
-		for key, value := range current {
-			combination[key] = value
-		}
-		*result = append(*result, combination)
-		return
-	}
-
-	for _, value := range values[index] {
-		current[keys[index]] = value
-		g.generateCombinationsRecursive(keys, values, index+1, current, result)
-	}
-	delete(current, keys[index]) // backtrack
-}
-
 func (g *Generator) copyAnswers() map[string]interface{} {
 	result := make(map[string]interface{})
 	for key, value := range g.answers {
@@ -278,7 +257,9 @@ func (g *Generator) copyAnswers() map[string]interface{} {
 
 // parseHierarchicalSelections parses choices that may contain hierarchical format (parent: child)
 // and returns a map of question keys to their possible value combinations
-func (g *Generator) parseHierarchicalSelections(multiValueQuestions map[string][]string) map[string][]map[string]string {
+func (g *Generator) parseHierarchicalSelections(
+	multiValueQuestions map[string][]string,
+) map[string][]map[string]string {
 	result := make(map[string][]map[string]string)
 
 	for questionKey, selections := range multiValueQuestions {
