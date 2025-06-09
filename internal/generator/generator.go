@@ -229,17 +229,20 @@ func (g *Generator) generateCombinations(multiValueQuestions map[string][]string
 		return []map[string]interface{}{g.copyAnswers()}
 	}
 
-	// Extract keys and values for combination generation
-	keys := make([]string, 0, len(multiValueQuestions))
-	values := make([][]string, 0, len(multiValueQuestions))
+	// Process hierarchical selections by parsing formatted choices
+	processedQuestions := g.parseHierarchicalSelections(multiValueQuestions)
 
-	for key, vals := range multiValueQuestions {
+	// Extract keys and values for combination generation
+	keys := make([]string, 0, len(processedQuestions))
+	values := make([][]map[string]string, 0, len(processedQuestions))
+
+	for key, vals := range processedQuestions {
 		keys = append(keys, key)
 		values = append(values, vals)
 	}
 
 	var combinations []map[string]interface{}
-	g.generateCombinationsRecursive(keys, values, 0, make(map[string]string), &combinations)
+	g.generateHierarchicalCombinationsRecursive(keys, values, 0, make(map[string]string), &combinations)
 
 	return combinations
 }
@@ -271,6 +274,88 @@ func (g *Generator) copyAnswers() map[string]interface{} {
 		result[key] = value
 	}
 	return result
+}
+
+// parseHierarchicalSelections parses choices that may contain hierarchical format (parent: child)
+// and returns a map of question keys to their possible value combinations
+func (g *Generator) parseHierarchicalSelections(multiValueQuestions map[string][]string) map[string][]map[string]string {
+	result := make(map[string][]map[string]string)
+
+	for questionKey, selections := range multiValueQuestions {
+		var parsedSelections []map[string]string
+
+		for _, selection := range selections {
+			// Check if this selection contains hierarchical format (parent: child)
+			if strings.Contains(selection, ": ") {
+				parts := strings.SplitN(selection, ": ", 2)
+				if len(parts) == 2 {
+					// This is a hierarchical selection
+					parentKey := g.findParentQuestion(questionKey)
+					parsedSelections = append(parsedSelections, map[string]string{
+						parentKey:   parts[0], // parent value (e.g., "dev")
+						questionKey: parts[1], // child value (e.g., "dev-cluster-1")
+					})
+				}
+			} else {
+				// This is a regular selection
+				parsedSelections = append(parsedSelections, map[string]string{
+					questionKey: selection,
+				})
+			}
+		}
+
+		result[questionKey] = parsedSelections
+	}
+
+	return result
+}
+
+// findParentQuestion finds the parent question for a given question based on dependency configuration
+func (g *Generator) findParentQuestion(questionKey string) string {
+	questions := g.config.Questions.GetQuestions()
+	question, exists := questions[questionKey]
+	if !exists {
+		return ""
+	}
+
+	if question.Type != nil && question.Type.Dynamic != nil {
+		deps := question.Type.Dynamic.DependencyQuestions
+		if len(deps) > 0 {
+			return deps[len(deps)-1] // Return the last (most immediate) dependency
+		}
+	}
+
+	return ""
+}
+
+// generateHierarchicalCombinationsRecursive generates combinations considering hierarchical relationships
+func (g *Generator) generateHierarchicalCombinationsRecursive(
+	keys []string, values [][]map[string]string, index int,
+	current map[string]string, result *[]map[string]interface{},
+) {
+	if index >= len(keys) {
+		// Create a copy of the base answers and override with current combination
+		combination := g.copyAnswers()
+		for key, value := range current {
+			combination[key] = value
+		}
+		*result = append(*result, combination)
+		return
+	}
+
+	for _, valueMap := range values[index] {
+		// Add all values from this valueMap to current
+		for k, v := range valueMap {
+			current[k] = v
+		}
+
+		g.generateHierarchicalCombinationsRecursive(keys, values, index+1, current, result)
+
+		// Backtrack - remove the values we just added
+		for k := range valueMap {
+			delete(current, k)
+		}
+	}
 }
 
 func (g *Generator) askQuestion(_ string, question config.Question) (interface{}, error) {
